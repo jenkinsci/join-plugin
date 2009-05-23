@@ -13,4 +13,10 @@
   <name>Join plugin</name>
   <description>Triggering a job after a group of jobs finish</description>
   <url>http://wiki.hudson-ci.org/display/HUDSON/Join+Plugin</url>
+
+  <scm>
+    <connection>scm:svn:https://guest@svn.dev.java.net/svn/hudson/tags/join-1.0</connection>
+    <developerConnection>scm:svn:https://svn.dev.java.net/svn/hudson/tags/join-1.0</developerConnection>
+    <url>https://hudson.dev.java.net/source/browse/hudson/hudson/plugins/join/tags/join-1.0</url>
+  </scm>
 </project>
