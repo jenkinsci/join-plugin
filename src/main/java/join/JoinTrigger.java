@@ -74,28 +74,15 @@ import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * Triggers builds of other projects.
- *
- * <p>
- * Despite what the name suggests, this class doesn't actually trigger other jobs
- * as a part of {@link #perform} method. Its main job is to simply augument
- * {@link DependencyGraph}. Jobs are responsible for triggering downstream jobs
- * on its own, because dependencies may come from other sources.
- *
- * <p>
- * This class, however, does provide the {@link #execute(AbstractBuild, BuildListener, BuildTrigger)}
- * method as a convenience method to invoke downstream builds.
- *
- * @author Kohsuke Kawaguchi
- */
 @Extension
 public class JoinTrigger extends Recorder {
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
             BuildListener listener) throws InterruptedException, IOException {
         BuildTrigger buildTrigger = build.getProject().getPublishersList().get(BuildTrigger.class);
-        build.addAction(new JoinAction(this, buildTrigger));
+        JoinAction joinAction = new JoinAction(this, buildTrigger);
+        build.addAction(joinAction);
+        joinAction.checkPendingDownstream(build, listener);
         return true;
     }
 

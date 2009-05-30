@@ -25,7 +25,8 @@ public class JoinAction implements Action {
     private Result overallResult;
     
     public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger) {
-        String[] split = buildTrigger.getChildProjectsValue().split(",");
+        String[] split = buildTrigger==null ? 
+                new String[0] : buildTrigger.getChildProjectsValue().split(",");
         this.pendingDownstreamProjects = new LinkedList<String>();
         for(String proj : split) {
             this.pendingDownstreamProjects.add(proj.trim());
@@ -52,18 +53,22 @@ public class JoinAction implements Action {
         if(pendingDownstreamProjects.remove(name)) {
             this.overallResult = this.overallResult.combine(r.getResult());
             completedDownstreamProjects.add(name);
-            if(pendingDownstreamProjects.isEmpty()) {
-                listener.getLogger().println("All downstream projects complete!");
-                Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
-                if(this.overallResult.isWorseThan(threshold)) {
-                    listener.getLogger().println("Minimum result threshold not met for join project");
-                } else {
-                    List<AbstractProject> projects = 
-                        Items.fromNameList(joinProjects, AbstractProject.class);
-                    for(AbstractProject project : projects) {
-                        listener.getLogger().println("Scheduling join project: " + project.getName());
-                        project.scheduleBuild(new JoinCause(r));
-                    }
+            checkPendingDownstream(r, listener);
+        }
+    }
+
+    public void checkPendingDownstream(Run r, TaskListener listener) {
+        if(pendingDownstreamProjects.isEmpty()) {
+            listener.getLogger().println("All downstream projects complete!");
+            Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
+            if(this.overallResult.isWorseThan(threshold)) {
+                listener.getLogger().println("Minimum result threshold not met for join project");
+            } else {
+                List<AbstractProject> projects = 
+                    Items.fromNameList(joinProjects, AbstractProject.class);
+                for(AbstractProject project : projects) {
+                    listener.getLogger().println("Scheduling join project: " + project.getName());
+                    project.scheduleBuild(new JoinCause(r));
                 }
             }
         }
