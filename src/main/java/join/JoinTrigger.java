@@ -184,7 +184,7 @@ public class JoinTrigger extends Recorder {
                     return;            
                 }
                 listener.getLogger().println("Notifying upstream of completion: " + upstreamProject + " #" + upstreamJobNumber);
-                ja.downstreamFinished(run.getParent().getName(), r, listener);
+                ja.downstreamFinished(run.getParent().getName(), run, listener);
             }
 
         }
