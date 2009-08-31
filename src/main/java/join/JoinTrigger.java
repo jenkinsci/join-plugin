@@ -23,59 +23,56 @@
  */
 package join;
 
-import hudson.Launcher;
 import hudson.Extension;
-import hudson.tasks.Messages;
-import hudson.Util;
-import hudson.security.AccessControlled;
-import hudson.tasks.BuildStepDescriptor;
-import hudson.tasks.BuildTrigger;
-import hudson.tasks.Notifier;
-import hudson.tasks.Publisher;
-import hudson.tasks.Recorder;
-import hudson.matrix.MatrixAggregatable;
-import hudson.matrix.MatrixAggregator;
-import hudson.matrix.MatrixBuild;
+import hudson.Functions;
+import hudson.Launcher;
+import hudson.Plugin;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
-import hudson.model.DependecyDeclarer;
-import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
+import hudson.model.FreeStyleProject;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.Items;
-import hudson.model.Job;
 import hudson.model.Project;
-import hudson.model.Result;
 import hudson.model.Run;
+import hudson.model.Saveable;
 import hudson.model.TaskListener;
 import hudson.model.Cause.UpstreamCause;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
+import hudson.tasks.BuildStep;
+import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.BuildTrigger;
+import hudson.tasks.Publisher;
+import hudson.tasks.Recorder;
 import hudson.util.DescribableList;
-import hudson.util.FormValidation;
-import net.sf.json.JSONObject;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.AncestorInPath;
-import org.kohsuke.stapler.QueryParameter;
 
-import javax.servlet.ServletException;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import join.JoinAction.JoinCause;
+
+import net.sf.json.JSONObject;
+
+import org.kohsuke.stapler.StaplerRequest;
+
 @Extension
 public class JoinTrigger extends Recorder {
+    @Override
+    public boolean prebuild(AbstractBuild<?, ?> build, BuildListener listener) {
+        for( BuildStep bs : joinPublishers )
+            if(!bs.prebuild(build,listener))
+                return false;
+        return true;
+    }
+
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
             BuildListener listener) throws InterruptedException, IOException {
@@ -87,19 +84,26 @@ public class JoinTrigger extends Recorder {
     }
 
     private String joinProjects;
+    
+    private DescribableList<Publisher,Descriptor<Publisher>> joinPublishers =
+        new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
+
     private boolean evenIfDownstreamUnstable;
     
     public JoinTrigger() {
-        this("", false);
+        this(new DescribableList<Publisher, Descriptor<Publisher>>((Saveable)null), "", false);
     }
     
-    public JoinTrigger(String string, boolean b) {
+    public JoinTrigger(DescribableList<Publisher,Descriptor<Publisher>> publishers,String string, boolean b) {
         this.joinProjects = string;
         this.evenIfDownstreamUnstable = b;
+        this.joinPublishers = publishers;
     }
 
     @Extension
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
+        public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
+
         public String getDisplayName() {
             return "Join Trigger";
         }
@@ -109,14 +113,36 @@ public class JoinTrigger extends Recorder {
         }
 
         public JoinTrigger newInstance(StaplerRequest req, JSONObject formData) throws FormException {
-            return new JoinTrigger(
+            LOGGER.finer(formData.toString());
+            DescribableList<Publisher,Descriptor<Publisher>> publishers = 
+                new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
+            
+            JSONObject postbuild = formData.optJSONObject("postbuildactions");
+            if(postbuild != null) {
+                JSONObject joinPublishers = postbuild.optJSONObject("joinPublishers");
+                if(joinPublishers != null) {
+                    publishers.rebuild(req, joinPublishers, getApplicableDescriptors());
+                }
+            }
+
+            JSONObject experimentalpostbuild = formData.optJSONObject("experimentalpostbuildactions");
+            if(experimentalpostbuild != null) {
+                JSONObject joinTriggers = experimentalpostbuild.optJSONObject("joinPublishers");
+                if(joinTriggers != null) {
+                    LOGGER.finest("EPB: " + joinTriggers.toString() + joinTriggers.isArray());
+                    publishers.rebuild(req, joinTriggers, Publisher.all());
+                }
+            }
+
+            LOGGER.finer("Parsed " + publishers.size() + " publishers");
+            return new JoinTrigger(publishers,
                 formData.getString("joinProjectsValue"),
                 formData.has("evenIfDownstreamUnstable") && formData.getBoolean("evenIfDownstreamUnstable"));
         }
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
-            return true;
+            return FreeStyleProject.class.isAssignableFrom(jobType);
         }
 
         public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
@@ -124,6 +150,25 @@ public class JoinTrigger extends Recorder {
             return !jobType.getName().contains("PromotionProcess");
         }
 
+        public List<Descriptor<Publisher>> getApplicableDescriptors() {
+            ArrayList<Descriptor<Publisher>> list = new ArrayList<Descriptor<Publisher>>();
+            Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
+            if (parameterizedTrigger != null) {
+                list.add(Hudson.getInstance().getDescriptorByType(hudson.plugins.parameterizedtrigger.BuildTrigger.DescriptorImpl.class));
+            }
+            list.add(Hudson.getInstance().getDescriptorByType(hudson.tasks.Mailer.DescriptorImpl.class));
+            return list;
+        }
+        
+        public List<Descriptor<Publisher>> getApplicableExperimentalDescriptors(AbstractProject<?,?> project) {
+            List<Descriptor<Publisher>> list = Functions.getPublisherDescriptors(project);
+            LOGGER.finest("publisher count before removing publishers: " + list.size());
+            // need to prevent infinite recursion, so we remove the Join publisher.
+            list.remove(Hudson.getInstance().getDescriptorByType(DescriptorImpl.class));
+            list.removeAll(getApplicableDescriptors());
+            LOGGER.finest("publisher count after removing publishers: " + list.size());
+            return list;
+        }
         /**
          * Form validation method.
          */
@@ -147,7 +192,13 @@ public class JoinTrigger extends Recorder {
                 super(Run.class);
             }
 
+            @Override
             public void onCompleted(Run run, TaskListener listener) {
+                if(!(run instanceof AbstractBuild)) {
+                    return;
+                }
+                AbstractBuild<?,?> abstractBuild = (AbstractBuild<?,?>)run;
+                
                 listener.getLogger().println("Notifying upstream projects of job completion");
                 String upstreamProject = null;
                 int upstreamJobNumber = 0;
@@ -155,36 +206,45 @@ public class JoinTrigger extends Recorder {
                 if(ca == null) {
                     listener.getLogger().println("Join notifier requires a CauseAction");
                     return;
-                }
+                } 
                 for(Cause c : ca.getCauses()) {
                     if(!(c instanceof UpstreamCause)) continue;
+                    if(c instanceof JoinCause) continue;
                     UpstreamCause uc = (UpstreamCause)c;
-                    notifyJob(run, listener, uc.getUpstreamProject(), uc.getUpstreamBuild());
+                    notifyJob(abstractBuild, listener, uc.getUpstreamProject(), uc.getUpstreamBuild());
                 }
                 return;
             }
             
-            private void notifyJob(Run run, TaskListener listener, String upstreamProject,
+            private void notifyJob(AbstractBuild<?,?> abstractBuild, TaskListener listener, String upstreamProjectName,
                     int upstreamJobNumber) {
-                List<AbstractProject> upstreamList = Items.fromNameList(upstreamProject,AbstractProject.class);
+                List<AbstractProject> upstreamList = Items.fromNameList(upstreamProjectName,AbstractProject.class);
                 if(upstreamList.size() != 1) {
-                    listener.getLogger().println("Join notifier cannot find upstream project: " + upstreamProject);
+                    listener.getLogger().println("Join notifier cannot find upstream project: " + upstreamProjectName);
                     return;
                 };
-                AbstractProject<?,?> upstream = upstreamList.get(0);
-                Run r = upstream.getBuildByNumber(upstreamJobNumber);
+                AbstractProject<?,?> upstreamProject = upstreamList.get(0);
+                Run upstreamRun = upstreamProject.getBuildByNumber(upstreamJobNumber);
                 
-                if(r == null) {
-                    listener.getLogger().println("Join notifier cannot find upstream build: " + upstreamProject + " number " + upstreamJobNumber);
+                if(upstreamRun == null) {
+                    listener.getLogger().println("Join notifier cannot find upstream run: " + upstreamProjectName + " number " + upstreamJobNumber);
                     return;
                 };
-                JoinAction ja = r.getAction(JoinAction.class);
+                if(!(upstreamRun instanceof AbstractBuild)) {
+                    LOGGER.fine("Upstream run is not an AbstractBuild: " + upstreamProjectName + " number " + upstreamJobNumber);
+                    return;
+                }
+                
+                AbstractBuild<?,?> upstreamBuild = (AbstractBuild<?,?>)upstreamRun;
+                JoinAction ja = upstreamRun.getAction(JoinAction.class);
                 if(ja == null) {
-                    listener.getLogger().println("Join notifier cannot find upstream JoinAction: " + upstreamProject + " number " + upstreamJobNumber);
+                    // does not go in the build log, since this is normal for any downstream project that
+                    // runs without the join plugin enabled
+                    LOGGER.finer("Join notifier cannot find upstream JoinAction: " + upstreamProjectName + " number " + upstreamJobNumber);
                     return;            
                 }
-                listener.getLogger().println("Notifying upstream of completion: " + upstreamProject + " #" + upstreamJobNumber);
-                ja.downstreamFinished(run.getParent().getName(), run, listener);
+                listener.getLogger().println("Notifying upstream of completion: " + upstreamProjectName + " #" + upstreamJobNumber);
+                ja.downstreamFinished(upstreamBuild, abstractBuild, listener);
             }
 
         }
@@ -211,8 +271,25 @@ public class JoinTrigger extends Recorder {
         }
     }
 
-    private static final Logger LOGGER = Logger.getLogger(BuildTrigger.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(JoinTrigger.class.getName());
 
+    public boolean usePostBuildActions() {
+        return containsAnyDescriptor(DescriptorImpl.DESCRIPTOR.getApplicableDescriptors());
+    }
+
+    private boolean containsAnyDescriptor(
+            List<Descriptor<Publisher>> applicableDescriptors) {
+        for(Descriptor<Publisher> descriptor : applicableDescriptors) {
+           if(joinPublishers.contains(descriptor)) {
+               return true;
+           }
+        }
+        return false;
+    }
+    
+    public boolean useExperimentalPostBuildActions(AbstractProject<?,?> project) {
+        return containsAnyDescriptor(DescriptorImpl.DESCRIPTOR.getApplicableExperimentalDescriptors(project));
+    }
     
     public String getJoinProjectsValue() {
         return joinProjects;
@@ -221,7 +298,11 @@ public class JoinTrigger extends Recorder {
     public List<AbstractProject> getJoinProjects() {
         return Items.fromNameList(joinProjects,AbstractProject.class);
     }
-    
+
+    public DescribableList<Publisher, Descriptor<Publisher>> getJoinPublishers() {
+        return joinPublishers;
+    }
+
     public boolean getEvenIfDownstreamUnstable() {
         return this.evenIfDownstreamUnstable;
     }

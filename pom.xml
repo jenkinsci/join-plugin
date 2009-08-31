@@ -13,4 +13,13 @@
   <name>Join plugin</name>
   <description>Triggering a job after a group of jobs finish</description>
   <url>http://wiki.hudson-ci.org/display/HUDSON/Join+Plugin</url>
+  
+  <dependencies>
+    <dependency>
+      <groupId>org.jvnet.hudson.plugins</groupId>
+      <artifactId>parameterized-trigger</artifactId>
+      <version>2.0</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
 </project>
