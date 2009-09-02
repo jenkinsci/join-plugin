@@ -27,6 +27,7 @@ import hudson.Extension;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Plugin;
+import hudson.maven.AbstractMavenProject;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
@@ -142,7 +143,7 @@ public class JoinTrigger extends Recorder {
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
-            return FreeStyleProject.class.isAssignableFrom(jobType);
+            return FreeStyleProject.class.isAssignableFrom(jobType) || AbstractMavenProject.class.isAssignableFrom(jobType);
         }
 
         public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
@@ -305,5 +306,12 @@ public class JoinTrigger extends Recorder {
 
     public boolean getEvenIfDownstreamUnstable() {
         return this.evenIfDownstreamUnstable;
+    }
+    
+    private Object readResolve() {
+        if(this.joinPublishers == null) {
+            this.joinPublishers = new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
+        }
+        return this;
     }
 }
