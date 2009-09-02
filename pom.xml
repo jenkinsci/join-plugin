@@ -9,7 +9,7 @@
 
   <artifactId>join</artifactId>
   <packaging>hpi</packaging>
-  <version>1.4-SNAPSHOT</version>
+  <version>1.4</version>
   <name>Join plugin</name>
   <description>Triggering a job after a group of jobs finish</description>
   <url>http://wiki.hudson-ci.org/display/HUDSON/Join+Plugin</url>
@@ -21,5 +21,16 @@
       <version>2.0</version>
       <optional>true</optional>
     </dependency>
+    <dependency>
+      <groupId>org.jvnet.hudson.main</groupId>
+      <artifactId>maven-plugin</artifactId>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
+
+  <scm>
+    <connection>scm:svn:https://guest@svn.dev.java.net/svn/hudson/tags/join-1.4</connection>
+    <developerConnection>scm:svn:https://svn.dev.java.net/svn/hudson/tags/join-1.4</developerConnection>
+    <url>https://hudson.dev.java.net/source/browse/hudson/hudson/plugins/join/tags/join-1.4</url>
+  </scm>
 </project>
