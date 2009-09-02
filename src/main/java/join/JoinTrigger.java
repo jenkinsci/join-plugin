@@ -143,7 +143,12 @@ public class JoinTrigger extends Recorder {
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
-            return FreeStyleProject.class.isAssignableFrom(jobType) || AbstractMavenProject.class.isAssignableFrom(jobType);
+            boolean freeStyle = FreeStyleProject.class.isAssignableFrom(jobType);
+            if(freeStyle) {
+                return true;
+            }
+            Plugin mavenProjectPlugin = Hudson.getInstance().getPlugin("maven-plugin");
+            return mavenProjectPlugin != null && AbstractMavenProject.class.isAssignableFrom(jobType);
         }
 
         public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
