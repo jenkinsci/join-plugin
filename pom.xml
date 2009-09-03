@@ -21,5 +21,11 @@
       <version>2.0</version>
       <optional>true</optional>
     </dependency>
+    <dependency>
+      <groupId>org.jvnet.hudson.plugins</groupId>
+      <artifactId>maven-plugin</artifactId>
+      <version>1.318</version>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
 </project>
