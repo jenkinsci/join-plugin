@@ -9,7 +9,8 @@
            help="/plugin/join/help/joinProjects.html">
     <f:textbox name="join.joinProjectsValue" field="joinProjectsValue"/>
   </f:entry>
-           
+  
+  <j:if test="${descriptor.getApplicableDescriptors().size() > 0}">
   <f:nested>
    <table>
     <f:optionalBlock name="join.postbuildactions" title="Run post-build actions at join"
@@ -34,4 +35,5 @@
     -->
    </table>
   </f:nested>
+  </j:if>
 </j:jelly>

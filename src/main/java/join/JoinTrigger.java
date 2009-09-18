@@ -162,7 +162,8 @@ public class JoinTrigger extends Recorder {
             if (parameterizedTrigger != null) {
                 list.add(Hudson.getInstance().getDescriptorByType(hudson.plugins.parameterizedtrigger.BuildTrigger.DescriptorImpl.class));
             }
-            list.add(Hudson.getInstance().getDescriptorByType(hudson.tasks.Mailer.DescriptorImpl.class));
+            // See issue 4384.  Supporting the mailer here breaks its use as the regular post-build action.
+            //list.add(Hudson.getInstance().getDescriptorByType(hudson.tasks.Mailer.DescriptorImpl.class));
             return list;
         }
         
