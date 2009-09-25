@@ -29,11 +29,14 @@ public class JoinAction implements Action {
     private boolean evenIfDownstreamUnstable;
     private Result overallResult;
     
-    public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger) {
-        String[] split = buildTrigger==null ? 
+    public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger, ArrayList<String> otherDownstream) {
+        String[] downstreamProjects = buildTrigger==null ? 
                 new String[0] : buildTrigger.getChildProjectsValue().split(",");
         this.pendingDownstreamProjects = new LinkedList<String>();
-        for(String proj : split) {
+        for(String proj : otherDownstream) {
+            this.pendingDownstreamProjects.add(proj.trim());
+        }
+        for(String proj : downstreamProjects) {
             this.pendingDownstreamProjects.add(proj.trim());
         }
         this.joinProjects = joinTrigger.getJoinProjectsValue();
