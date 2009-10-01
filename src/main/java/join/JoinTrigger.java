@@ -47,6 +47,7 @@ import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
 import hudson.tasks.BuildStep;
 import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.BuildTrigger;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
@@ -335,5 +336,9 @@ public class JoinTrigger extends Recorder {
             this.joinPublishers = new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
         }
         return this;
+    }
+
+    public BuildStepMonitor getRequiredMonitorService() {
+        return BuildStepMonitor.NONE;
     }
 }
