@@ -118,18 +118,20 @@ public class JoinTrigger extends Recorder {
         this.joinPublishers = publishers;
     }
 
-    @Extension
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
+        @Extension
         public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
 
         public String getDisplayName() {
             return "Join Trigger";
         }
 
+        @Override
         public String getHelpFile() {
             return "/plugin/join/help/joinTrigger.html";
         }
 
+        @Override
         public JoinTrigger newInstance(StaplerRequest req, JSONObject formData) throws FormException {
             LOGGER.finer(formData.toString());
             DescribableList<Publisher,Descriptor<Publisher>> publishers = 
@@ -246,14 +248,14 @@ public class JoinTrigger extends Recorder {
                 if(upstreamList.size() != 1) {
                     listener.getLogger().println("Join notifier cannot find upstream project: " + upstreamProjectName);
                     return;
-                };
+                }
                 AbstractProject<?,?> upstreamProject = upstreamList.get(0);
                 Run upstreamRun = upstreamProject.getBuildByNumber(upstreamJobNumber);
                 
                 if(upstreamRun == null) {
                     listener.getLogger().println("Join notifier cannot find upstream run: " + upstreamProjectName + " number " + upstreamJobNumber);
                     return;
-                };
+                }
                 if(!(upstreamRun instanceof AbstractBuild)) {
                     LOGGER.fine("Upstream run is not an AbstractBuild: " + upstreamProjectName + " number " + upstreamJobNumber);
                     return;
