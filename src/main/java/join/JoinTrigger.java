@@ -91,11 +91,12 @@ public class JoinTrigger extends Recorder {
         if (parameterizedTrigger != null) {
             hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger = 
                 build.getProject().getPublishersList().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
-            for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
-                for(AbstractProject project : config.getProjectList()) {
-                    ret.add(project.getName());
+            if (buildTrigger != null) {
+                for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
+                    for(AbstractProject project : config.getProjectList()) {
+                        ret.add(project.getName());
+                    }
                 }
-                
             }
         }
         return ret;
