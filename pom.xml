@@ -33,5 +33,11 @@
       <artifactId>maven-plugin</artifactId>
       <optional>true</optional>
     </dependency>
+    <dependency>
+      <groupId>org.jvnet.hudson.plugins</groupId>
+      <artifactId>copyarchiver</artifactId>
+      <version>0.4.2</version>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
 </project>
