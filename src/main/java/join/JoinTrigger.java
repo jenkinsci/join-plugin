@@ -79,13 +79,13 @@ public class JoinTrigger extends Recorder {
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
             BuildListener listener) throws InterruptedException, IOException {
         BuildTrigger buildTrigger = build.getProject().getPublishersList().get(BuildTrigger.class);
-        JoinAction joinAction = new JoinAction(this, buildTrigger, TryGetParameterizedDownstreamNames(build));
+        JoinAction joinAction = new JoinAction(this, buildTrigger, tryGetParameterizedDownstreamNames(build));
         build.addAction(joinAction);
         joinAction.checkPendingDownstream(build, listener);
         return true;
     }
 
-    private ArrayList<String> TryGetParameterizedDownstreamNames(AbstractBuild<?, ?> build) {
+    private ArrayList<String> tryGetParameterizedDownstreamNames(AbstractBuild<?, ?> build) {
         ArrayList<String> ret = new ArrayList<String>();
         Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
         if (parameterizedTrigger != null) {
@@ -94,10 +94,12 @@ public class JoinTrigger extends Recorder {
             if (buildTrigger != null) {
                 for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
                     for(AbstractProject project : config.getProjectList()) {
+                        if (!project.isDisabled()) {
                         ret.add(project.getName());
                     }
                 }
             }
+        }
         }
         return ret;
     }

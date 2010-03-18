@@ -30,13 +30,15 @@ public class JoinAction implements Action {
     private Result overallResult;
     
     public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger, ArrayList<String> otherDownstream) {
-        String[] downstreamProjects = buildTrigger==null ? 
-                new String[0] : buildTrigger.getChildProjectsValue().split(",");
         this.pendingDownstreamProjects = new LinkedList<String>();
-        for(String proj : otherDownstream) {
-            this.pendingDownstreamProjects.add(proj.trim());
+        if(buildTrigger != null) {
+            for(AbstractProject project : buildTrigger.getChildProjects()) {
+                if(!project.isDisabled()) {
+                    this.pendingDownstreamProjects.add(project.getName());
+                }
         }
-        for(String proj : downstreamProjects) {
+        }
+        for(String proj : otherDownstream) {
             this.pendingDownstreamProjects.add(proj.trim());
         }
         this.joinProjects = joinTrigger.getJoinProjectsValue();
