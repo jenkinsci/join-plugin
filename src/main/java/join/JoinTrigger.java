@@ -30,21 +30,29 @@ import hudson.Plugin;
 import hudson.maven.AbstractMavenProject;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
+import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
 import hudson.model.FreeStyleProject;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.Items;
 import hudson.model.Project;
+import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Saveable;
 import hudson.model.TaskListener;
 import hudson.model.Cause.UpstreamCause;
+import hudson.model.DependecyDeclarer;
+import hudson.model.DependencyGraph.Dependency;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
+import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
+import hudson.plugins.parameterizedtrigger.ParameterizedDependency;
+import hudson.plugins.parameterizedtrigger.ResultCondition;
 import hudson.tasks.BuildStep;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
@@ -54,6 +62,7 @@ import hudson.tasks.Recorder;
 import hudson.util.DescribableList;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -66,7 +75,107 @@ import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 
 @Extension
-public class JoinTrigger extends Recorder {
+public class JoinTrigger extends Recorder implements DependecyDeclarer {
+
+    private static class JoinDependency<DEP extends Dependency> extends Dependency {
+                private AbstractProject<?,?> splitProject;
+        protected DEP splitDependency;
+
+        protected JoinDependency(AbstractProject<?,?> upstream, AbstractProject<?,?> downstream, AbstractProject<?,?> splitProject) {
+            super(upstream, downstream);
+            this.splitProject = splitProject;
+        }
+
+        @Override
+        public boolean shouldTriggerBuild(AbstractBuild build, TaskListener listener, List<Action> actions) {
+            AbstractBuild<?,?> splitBuild = getSplitBuild(build);
+            if (splitBuild != null) {
+                final JoinAction joinAction = splitBuild.getAction(JoinAction.class);
+                if(joinAction != null) {
+                    listener.getLogger().println("Notifying upstream build " + splitBuild + " of job completion");
+                    boolean joinDownstreamFinished = joinAction.downstreamFinished(splitBuild, build, listener);
+                    joinDownstreamFinished = joinDownstreamFinished &&
+                            conditionIsMet(joinAction.getOverallResult()) &&
+                                splitDependency.shouldTriggerBuild(splitBuild, listener, actions);
+                    return joinDownstreamFinished;
+                }
+            }
+            // does not go in the build log, since this is normal for any downstream project that
+            // runs without the join plugin enabled
+            LOGGER.log(Level.FINER, "Join notifier cannot find upstream JoinAction: {0}", splitBuild);
+            return false;
+        }
+
+           private AbstractBuild<?,?> getSplitBuild(AbstractBuild<?,?> build) {
+            final List<Cause> causes = build.getCauses();
+            AbstractBuild<?,?> splitBuild = null;
+            for (Cause cause : causes) {
+                if (cause instanceof JoinAction.JoinCause) {
+                    continue;
+                }
+                if (cause instanceof UpstreamCause) {
+                    UpstreamCause uc = (UpstreamCause) cause;
+                    final int upstreamBuildNum = uc.getUpstreamBuild();
+                    final String upstreamProject = uc.getUpstreamProject();
+                    if (splitProject.getName().equals(upstreamProject)) {
+                        final Run<?,?> upstreamRun = splitProject.getBuildByNumber(upstreamBuildNum);
+                        if (upstreamRun instanceof AbstractBuild<?,?>) {
+                            splitBuild = (AbstractBuild<?,?>) upstreamRun;
+                            break;
+                        }
+                    }
+                }
+            }
+            return splitBuild;
+        }
+
+        protected boolean conditionIsMet(Result overallResult) {
+            return true;
+        }
+
+    }
+
+    private static class ParameterizedJoinDependency extends JoinDependency<ParameterizedDependency> {
+        private BuildTriggerConfig config;
+
+        private ParameterizedJoinDependency(AbstractProject<?,?> upstream, AbstractProject<?,?> downstream, AbstractProject<?,?> splitProject,BuildTriggerConfig config) {
+            super(upstream, downstream,splitProject);
+            splitDependency = new ParameterizedDependency(splitProject, downstream, config);
+            this.config = config;
+        }
+
+        @Override
+        protected boolean conditionIsMet(Result overallResult) {
+            // This is bad but sadly the method is package-private and not public!
+            try {
+                ResultCondition condition = config.getCondition();
+                Method isMetMethod = condition.getClass().getDeclaredMethod("isMet", Result.class);
+                isMetMethod.setAccessible(true);
+                return (Boolean)isMetMethod.invoke(condition, overallResult);
+            } catch (Exception ex) {
+                Logger.getLogger(ParameterizedJoinDependency.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            return true;
+        }
+    }
+
+    private static class JoinTriggerDependency extends JoinDependency<Dependency> {
+        boolean evenIfDownstreamUnstable;
+        JoinTriggerDependency(AbstractProject<?,?> upstream, AbstractProject<?,?> downstream, AbstractProject<?,?> splitProject,boolean evenIfDownstreamUnstable) {
+            super(upstream, downstream, splitProject);
+            this.evenIfDownstreamUnstable = evenIfDownstreamUnstable;
+            splitDependency = new Dependency(splitProject, downstream);
+        }
+
+        @Override
+        protected boolean conditionIsMet(Result overallResult) {
+            Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
+            return overallResult.isBetterOrEqualTo(threshold);
+        }
+
+
+    }
+
     @Override
     public boolean prebuild(AbstractBuild<?, ?> build, BuildListener listener) {
         for( BuildStep bs : joinPublishers )
@@ -119,6 +228,83 @@ public class JoinTrigger extends Recorder {
         this.joinProjects = string;
         this.evenIfDownstreamUnstable = b;
         this.joinPublishers = publishers;
+    }
+
+    @Override
+    public void buildDependencyGraph(AbstractProject owner, DependencyGraph graph) {
+        if (!canDeclare(owner)) {
+            return;
+        }
+
+        final List<AbstractProject<?,?>> downstreamProjects = getAllDownstream(owner);
+        Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
+        for (AbstractProject<?,?> downstreamProject: downstreamProjects) {
+            if (parameterizedTrigger != null) {
+                hudson.plugins.parameterizedtrigger.BuildTrigger paramBt =
+                        joinPublishers.get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
+                if (paramBt != null) {
+                    for (BuildTriggerConfig config : paramBt.getConfigs()) {
+                        for (AbstractProject<?,?> joinProject : config.getProjectList()) {
+                            ParameterizedJoinDependency dependency =
+                                new ParameterizedJoinDependency(downstreamProject, joinProject, owner, config);
+                            graph.addDependency(dependency);
+                        }
+                    }
+                }
+            }
+
+            for (AbstractProject<?,?> joinProject : getJoinProjects()) {
+                JoinTriggerDependency dependency =
+                        new JoinTriggerDependency(downstreamProject, joinProject, owner, evenIfDownstreamUnstable);
+                graph.addDependency(dependency);
+            }
+        }
+    }
+
+    static boolean canDeclare(AbstractProject<?,?> owner) {
+            // Inner class added in Hudson 1.341
+            return DependencyGraph.class.getClasses().length > 0
+                    // See HUDSON-6274 -- currently Maven projects call scheduleProject
+                    // directly, so would not get parameters from DependencyGraph.
+                    // Remove this condition when HUDSON-6274 is implemented.
+                    && !owner.getClass().getName().equals("hudson.maven.MavenModuleSet");
+    }
+
+    
+    public List<AbstractProject<?,?>> getParameterizedDownstream(AbstractProject<?,?> project) {
+        ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
+        Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
+        if (parameterizedTrigger != null) {
+            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger = 
+                project.getPublishersList().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
+            if (buildTrigger != null) {
+                for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
+                    for(AbstractProject<?,?> downStreamProject : config.getProjectList()) {
+                        if (!downStreamProject.isDisabled()) {
+                            ret.add(downStreamProject);
+                        }
+                    }
+                }
+            }
+        }
+        return ret;
+    }
+
+    public List<AbstractProject<?,?>> getBuildTriggerDownstream(AbstractProject<?,?> project) {
+        ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
+        BuildTrigger buildTrigger = project.getPublishersList().get(BuildTrigger.class);
+        if (buildTrigger != null) {
+            for (AbstractProject<?,?> childProject : buildTrigger.getChildProjects()) {
+                ret.add(childProject);
+            }
+        }
+        return ret;
+    }
+
+    public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project) {
+        List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
+        downstream.addAll(getParameterizedDownstream(project));
+        return downstream;
     }
 
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
@@ -329,7 +515,13 @@ public class JoinTrigger extends Recorder {
     }
 
     public List<AbstractProject> getJoinProjects() {
-        return Items.fromNameList(joinProjects,AbstractProject.class);
+        List<AbstractProject> list;
+        if (joinProjects == null) {
+            list = new ArrayList<AbstractProject>();
+        } else {
+            list = Items.fromNameList(joinProjects, AbstractProject.class);
+        }
+        return list;
     }
 
     public DescribableList<Publisher, Descriptor<Publisher>> getJoinPublishers() {

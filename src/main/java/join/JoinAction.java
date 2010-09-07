@@ -24,6 +24,7 @@ import hudson.model.Cause.UpstreamCause;
 public class JoinAction implements Action {
     private List<String> pendingDownstreamProjects;
     private List<String> completedDownstreamProjects;
+    private List<String> consideredBuilds;
     private transient String joinProjects;
     private DescribableList<Publisher, Descriptor<Publisher>> joinPublishers;
     private boolean evenIfDownstreamUnstable;
@@ -45,6 +46,7 @@ public class JoinAction implements Action {
         this.joinPublishers = joinTrigger.getJoinPublishers();
         this.evenIfDownstreamUnstable = joinTrigger.getEvenIfDownstreamUnstable();
         this.completedDownstreamProjects = new LinkedList<String>();
+        this.consideredBuilds = new LinkedList<String>();
         this.overallResult = Result.SUCCESS;
     }
 
@@ -61,15 +63,23 @@ public class JoinAction implements Action {
     }
 
     // upstreamBuild is the build that contains this JoinAction.
-    public void downstreamFinished(AbstractBuild<?,?> upstreamBuild, AbstractBuild<?,?> finishedBuild, TaskListener listener) {
-        String finishedBuildProjectName = finishedBuild.getProject().getName();
-        if(pendingDownstreamProjects.remove(finishedBuildProjectName)) {
-            this.overallResult = this.overallResult.combine(finishedBuild.getResult());
-            completedDownstreamProjects.add(finishedBuildProjectName);
-            checkPendingDownstream(upstreamBuild, listener);
-        } else {
-            listener.getLogger().println("[Join] Pending does not contain " + finishedBuildProjectName);
+    public boolean downstreamFinished(AbstractBuild<?,?> upstreamBuild, AbstractBuild<?,?> finishedBuild, TaskListener listener) {
+        if (!consideredBuilds.contains(finishedBuild.toString())) {
+            consideredBuilds.add(finishedBuild.toString());
+            String finishedBuildProjectName = finishedBuild.getProject().getName();
+            if(pendingDownstreamProjects.remove(finishedBuildProjectName)) {
+                this.overallResult = this.overallResult.combine(finishedBuild.getResult());
+                completedDownstreamProjects.add(finishedBuildProjectName);
+                checkPendingDownstream(upstreamBuild, listener);
+            } else {
+                listener.getLogger().println("[Join] Pending does not contain " + finishedBuildProjectName);
+            }
         }
+        return pendingDownstreamProjects.isEmpty();
+    }
+
+    public Result getOverallResult() {
+        return overallResult;
     }
 
     public void checkPendingDownstream(AbstractBuild<?,?> owner, TaskListener listener) {
@@ -88,11 +98,13 @@ public class JoinAction implements Action {
                         e.printStackTrace();
                     }
                 }
-                List<AbstractProject> projects = 
-                    Items.fromNameList(joinProjects, AbstractProject.class);
-                for(AbstractProject project : projects) {
-                    listener.getLogger().println("Scheduling join project: " + project.getName());
-                    project.scheduleBuild(new JoinCause(owner));
+                if (!JoinTrigger.canDeclare(owner.getProject())) {
+                    List<AbstractProject> projects =
+                        Items.fromNameList(joinProjects, AbstractProject.class);
+                    for(AbstractProject project : projects) {
+                        listener.getLogger().println("Scheduling join project: " + project.getName());
+                        project.scheduleBuild(new JoinCause(owner));
+                    }
                 }
             }
         } else {

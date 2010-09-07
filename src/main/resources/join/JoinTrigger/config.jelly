@@ -2,14 +2,14 @@
   <j:if test="${descriptor.showEvenIfUnstableOption(targetType)}">
     <f:entry title="" help="/plugin/join/help/evenUnstable.html">
       <f:checkbox id="buildTrigger.evenIfDownstreamUnstable" name="buildTrigger.evenIfDownstreamUnstable" checked="${instance.evenIfDownstreamUnstable}" />
-      <label for="buildTrigger.evenIfDownstreamUnstable">${%Trigger even if some downstream projects are unstable}</label>
+      <label class="attach-previous">${%Trigger even if some downstream projects are unstable}</label>
     </f:entry>
   </j:if>
-  <f:entry title="${%Projects to build once, after all downstream projects have finished}"  
+  <f:entry title="${%Projects to build once, after all downstream projects have finished}"
            help="/plugin/join/help/joinProjects.html">
     <f:textbox name="join.joinProjectsValue" field="joinProjectsValue"/>
   </f:entry>
-  
+
   <j:if test="${descriptor.getApplicableDescriptors().size() > 0}">
   <f:nested>
    <table>
