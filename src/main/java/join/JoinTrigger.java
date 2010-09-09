@@ -106,7 +106,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             return false;
         }
 
-           private AbstractBuild<?,?> getSplitBuild(AbstractBuild<?,?> build) {
+        private AbstractBuild<?,?> getSplitBuild(AbstractBuild<?,?> build) {
             final List<Cause> causes = build.getCauses();
             AbstractBuild<?,?> splitBuild = null;
             for (Cause cause : causes) {
@@ -133,6 +133,38 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             return true;
         }
 
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            if (!super.equals(obj)) {
+                return false;
+            }
+            final JoinDependency<DEP> other = (JoinDependency<DEP>) obj;
+            if (this.splitProject != other.splitProject && (this.splitProject == null || !this.splitProject.equals(other.splitProject))) {
+                return false;
+            }
+            if (this.splitDependency != other.splitDependency && (this.splitDependency == null || !this.splitDependency.equals(other.splitDependency))) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 79 * hash + super.hashCode();
+            hash = 79 * hash + (this.splitProject != null ? this.splitProject.hashCode() : 0);
+            hash = 79 * hash + (this.splitDependency != null ? this.splitDependency.hashCode() : 0);
+            return hash;
+        }
+
+
+
     }
 
     private static class ParameterizedJoinDependency extends JoinDependency<ParameterizedDependency> {
@@ -157,6 +189,34 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             }
             return true;
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            if (!super.equals(obj)) {
+                return false;
+            }
+            final ParameterizedJoinDependency other = (ParameterizedJoinDependency) obj;
+            if (this.config != other.config && (this.config == null || !this.config.equals(other.config))) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 61 * hash + super.hashCode();
+            hash = 61 * hash + (this.config != null ? this.config.hashCode() : 0);
+            return hash;
+        }
+
+
     }
 
     private static class JoinTriggerDependency extends JoinDependency<Dependency> {
@@ -172,6 +232,34 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
             return overallResult.isBetterOrEqualTo(threshold);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            if (!super.equals(obj)) {
+                return false;
+            }
+            final JoinTriggerDependency other = (JoinTriggerDependency) obj;
+            if (this.evenIfDownstreamUnstable != other.evenIfDownstreamUnstable) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 71 * hash + super.hashCode();
+            hash = 71 * hash + (this.evenIfDownstreamUnstable ? 1 : 0);
+            return hash;
+        }
+
+
 
 
     }
