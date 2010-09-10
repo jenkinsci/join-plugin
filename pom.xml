@@ -47,24 +47,24 @@
 <reporting>
     <plugins>
       <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>cobertura-maven-plugin</artifactId>
+          <version>2.4</version>
+          <configuration>
+              <formats>
+                  <format>xml</format>
+              </formats>
+          </configuration>
+      </plugin>
+      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>findbugs-maven-plugin</artifactId>
         <version>2.3.1</version>
         <configuration>
-          <findbugsXmlOutput>true</findbugsXmlOutput>
-          <!-- Optional directory to put findbugs xml report -->
-          <findbugsXmlOutputDirectory>target/site</findbugsXmlOutputDirectory>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-        <version>2.4</version>
-        <configuration>
-            <formats><format>xml</format></formats>
+            <findbugsXmlOutput>true</findbugsXmlOutput>
+            <xmlOutput>true</xmlOutput>
         </configuration>
       </plugin>
     </plugins>
-
 </reporting>
 </project>
