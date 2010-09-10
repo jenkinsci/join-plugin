@@ -109,6 +109,10 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         private AbstractBuild<?,?> getSplitBuild(AbstractBuild<?,?> build) {
             final List<Cause> causes = build.getCauses();
             AbstractBuild<?,?> splitBuild = null;
+            // If there is no intermediate project this will happen
+            if (splitProject.getName().equals(build.getProject().getName())) {
+                splitBuild = build;
+            }
             for (Cause cause : causes) {
                 if (cause instanceof JoinAction.JoinCause) {
                     continue;
@@ -325,6 +329,11 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         }
 
         final List<AbstractProject<?,?>> downstreamProjects = getAllDownstream(owner);
+        // If there is no intermediate project add the split project and use it as 
+        // the one triggering the downstream build
+        if (downstreamProjects.isEmpty()) {
+            downstreamProjects.add(owner);
+        }
         Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
         for (AbstractProject<?,?> downstreamProject: downstreamProjects) {
             if (parameterizedTrigger != null) {

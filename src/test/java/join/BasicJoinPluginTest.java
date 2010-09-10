@@ -72,13 +72,13 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
     }
 
     protected FreeStyleProject createFailingFreeStyleProject() throws Exception {
-        final FreeStyleProject project = createFreeStyleProject();
+        final FreeStyleProject project = createFreeStyleProjectWithNoQuietPeriod();
         project.getPublishersList().add(ResultSetter.FAILURE());
         return project;
     }
 
     protected FreeStyleProject createUnstableFreeStyleProject() throws Exception {
-        final FreeStyleProject project = createFreeStyleProject();
+        final FreeStyleProject project = createFreeStyleProjectWithNoQuietPeriod();
         project.getPublishersList().add(ResultSetter.UNSTABLE());
         return project;
     }
@@ -86,7 +86,7 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
     protected List<FreeStyleProject> createFreeStyleProjects(int number) throws Exception {
         List<FreeStyleProject> createdProjects = new ArrayList<FreeStyleProject>();
         for (int i=0; i<number; i++) {
-            createdProjects.add(createFreeStyleProject());
+            createdProjects.add(createFreeStyleProjectWithNoQuietPeriod());
         }
         return createdProjects;
     }
@@ -138,7 +138,9 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
     public void setUp() throws Exception {
         super.setUp();
         splitProject = createFreeStyleProject("splitProject");
+        splitProject.setQuietPeriod(0);
         joinProject = createFreeStyleProject("joinProject");
+        joinProject.setQuietPeriod(0);
     }
 
     public static class BuildTimeConstraint {
@@ -190,6 +192,12 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
                 afterFinished(build);
             }
         }
+    }
+
+    public FreeStyleProject createFreeStyleProjectWithNoQuietPeriod() throws Exception {
+        final FreeStyleProject freestyleProject = createFreeStyleProject();
+        freestyleProject.setQuietPeriod(0);
+        return freestyleProject;
     }
 
 }
