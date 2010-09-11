@@ -308,12 +308,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
     private String joinProjects;
     
     private DescribableList<Publisher,Descriptor<Publisher>> joinPublishers =
-        new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
+        new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
 
     private boolean evenIfDownstreamUnstable;
     
     public JoinTrigger() {
-        this(new DescribableList<Publisher, Descriptor<Publisher>>((Saveable)null), "", false);
+        this(new DescribableList<Publisher, Descriptor<Publisher>>(Saveable.NOOP), "", false);
     }
     
     public JoinTrigger(DescribableList<Publisher,Descriptor<Publisher>> publishers,String string, boolean b) {
@@ -420,14 +420,16 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         @Override
         public JoinTrigger newInstance(StaplerRequest req, JSONObject formData) throws FormException {
             LOGGER.finer(formData.toString());
-            DescribableList<Publisher,Descriptor<Publisher>> publishers = 
-                new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
-            
+
+            // Rebuild triggers save (even though java doc says otherwise)
+            // => first build list, then call constructor
+            List<JSONObject> describersJson = new ArrayList<JSONObject>();
+
             JSONObject postbuild = formData.optJSONObject("postbuildactions");
             if(postbuild != null) {
                 JSONObject joinPublishers = postbuild.optJSONObject("joinPublishers");
                 if(joinPublishers != null) {
-                    publishers.rebuild(req, joinPublishers, getApplicableDescriptors());
+                    describersJson.add(joinPublishers);
                 }
             }
 
@@ -436,9 +438,25 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
                 JSONObject joinTriggers = experimentalpostbuild.optJSONObject("joinPublishers");
                 if(joinTriggers != null) {
                     LOGGER.finest("EPB: " + joinTriggers.toString() + joinTriggers.isArray());
-                    publishers.rebuild(req, joinTriggers, Publisher.all());
+                    describersJson.add(joinTriggers);
                 }
             }
+
+            List<Publisher> newList = new ArrayList<Publisher>();
+
+            for (JSONObject json: describersJson) {
+                for (Descriptor<Publisher> d : getApplicableDescriptors()) {
+                    String name = d.getJsonSafeClassName();
+                    if (json.has(name)) {
+                        Publisher instance = d.newInstance(req, json.getJSONObject(name));
+                        newList.add(instance);
+                    }
+                }
+            }
+
+            DescribableList<Publisher,Descriptor<Publisher>> publishers =
+                new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP, newList);
+
 
             LOGGER.finer("Parsed " + publishers.size() + " publishers");
             return new JoinTrigger(publishers,
@@ -631,7 +649,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
     
     private Object readResolve() {
         if(this.joinPublishers == null) {
-            this.joinPublishers = new DescribableList<Publisher,Descriptor<Publisher>>((Saveable)null);
+            this.joinPublishers = new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
         }
         return this;
     }
