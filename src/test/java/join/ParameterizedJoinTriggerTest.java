@@ -24,7 +24,7 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         addParameterizedJoinTriggerToProject(splitProject,joinProject, new PredefinedBuildParameters("KEY=value"));
 
         FreeStyleProject intermediateProject =
-                createFreeStyleProject();
+                createFreeStyleProjectWithNoQuietPeriod();
         addProjectToSplitProject(splitProject, intermediateProject);
 
         hudson.rebuildDependencyGraph();
@@ -48,7 +48,7 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         addParameterizedJoinTriggerToProject(splitProject,joinProject, new CurrentBuildParameters());
 
         FreeStyleProject intermediateProject =
-                createFreeStyleProject();
+                createFreeStyleProjectWithNoQuietPeriod();
         addProjectToSplitProject(splitProject, intermediateProject);
 
         hudson.rebuildDependencyGraph();

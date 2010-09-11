@@ -1,5 +1,7 @@
 package join;
 
+import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.model.Cause.UserCause;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
@@ -7,6 +9,7 @@ import hudson.model.Project;
 import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
 import hudson.plugins.parameterizedtrigger.PredefinedBuildParameters;
 import hudson.plugins.parameterizedtrigger.ResultCondition;
+import hudson.slaves.DumbSlave;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -21,7 +24,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
     public void testOneIntermediateProject() throws Exception {
         addJoinTriggerToSplitProject(splitProject, joinProject);
 
-        FreeStyleProject intermediateProject = createFreeStyleProject();
+        FreeStyleProject intermediateProject = createFreeStyleProjectWithNoQuietPeriod();
         addProjectToSplitProject(splitProject, intermediateProject);
 
         hudson.rebuildDependencyGraph();
@@ -56,7 +59,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
     public void testRunNonSplitProject() throws Exception {
         List<FreeStyleProject> intermediateProjects = createFreeStyleProjects(2);
-        FreeStyleProject otherIntermediateProject = createFreeStyleProject();
+        FreeStyleProject otherIntermediateProject = createFreeStyleProjectWithNoQuietPeriod();
         final ArrayList<FreeStyleProject> allIntermediateProjects = new ArrayList<FreeStyleProject>();
         allIntermediateProjects.addAll(intermediateProjects);
         allIntermediateProjects.add(otherIntermediateProject);
@@ -73,7 +76,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
     public void testTwoJoinProjects() throws Exception {
         List<FreeStyleProject> intermediateProjects = createFreeStyleProjects(2);
-        final FreeStyleProject otherJoinProject = createFreeStyleProject();
+        final FreeStyleProject otherJoinProject = createFreeStyleProjectWithNoQuietPeriod();
         addJoinTriggerToSplitProject(splitProject, joinProject, otherJoinProject);
         addProjectsToSplitProject(splitProject, intermediateProjects);
         hudson.rebuildDependencyGraph();
@@ -102,7 +105,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         addJoinTriggerToSplitProject(splitProject, joinProject);
 
         Project<FreeStyleProject,FreeStyleBuild> intermediateProject =
-                createFreeStyleProject();
+                createFreeStyleProjectWithNoQuietPeriod();
         final CaptureEnvironmentBuilder builder = new CaptureEnvironmentBuilder();
         intermediateProject.getBuildersList().add(builder);
         BuildTriggerConfig buildTriggerConfig =
@@ -129,6 +132,32 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         waitUntilNoActivity();
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
         assertFinished(splitBuild).beforeStarted(joinBuild);
+    }
+
+    public void testSlave() throws Exception {
+        List<FreeStyleProject> intermediateProjects = createFreeStyleProjects(2);
+
+        FreeStyleProject slaveProject = createFreeStyleProjectWithNoQuietPeriod();
+        final DumbSlave slave = createOnlineSlave();
+        slaveProject.setAssignedNode(slave);
+
+        final ArrayList<FreeStyleProject> allIntermediateProjects = new ArrayList<FreeStyleProject>();
+        allIntermediateProjects.addAll(intermediateProjects);
+        allIntermediateProjects.add(slaveProject);
+        addJoinTriggerToSplitProject(splitProject, joinProject);
+        addProjectsToSplitProject(splitProject, allIntermediateProjects);
+        hudson.rebuildDependencyGraph();
+
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        waitUntilNoActivity();
+
+        final List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getUniqueBuilds(intermediateProjects);
+        final FreeStyleBuild slaveBuild = getUniqueBuild(slaveProject);
+        final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
+        assertInSequence(splitBuild,intermediateBuilds,joinBuild);
+        assertInSequence(splitBuild,slaveBuild,joinBuild);
+        assertEquals(slave, slaveBuild.getBuiltOn());
+        hudson.removeNode(slave);
     }
 
 }
