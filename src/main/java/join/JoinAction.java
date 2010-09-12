@@ -1,6 +1,11 @@
 package join;
 
+import hudson.FilePath;
+import hudson.Launcher;
+import hudson.Proc;
+import hudson.remoting.Channel;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,6 +23,7 @@ import hudson.tasks.Publisher;
 import hudson.util.DescribableList;
 import hudson.model.Items;
 import hudson.model.Cause.UpstreamCause;
+import java.util.Map;
 
 public class JoinAction implements Action {
     private List<String> pendingDownstreamProjects;
@@ -61,7 +67,7 @@ public class JoinAction implements Action {
     }
 
     // upstreamBuild is the build that contains this JoinAction.
-    public boolean downstreamFinished(AbstractBuild<?,?> upstreamBuild, AbstractBuild<?,?> finishedBuild, TaskListener listener) {
+    public synchronized boolean downstreamFinished(AbstractBuild<?,?> upstreamBuild, AbstractBuild<?,?> finishedBuild, TaskListener listener) {
         if (!consideredBuilds.contains(finishedBuild.toString())) {
             consideredBuilds.add(finishedBuild.toString());
             String finishedBuildProjectName = finishedBuild.getProject().getName();
@@ -80,16 +86,21 @@ public class JoinAction implements Action {
         return overallResult;
     }
 
-    public void checkPendingDownstream(AbstractBuild<?,?> owner, TaskListener listener) {
+    public synchronized void checkPendingDownstream(AbstractBuild<?,?> owner, TaskListener listener) {
         if(pendingDownstreamProjects.isEmpty()) {
             listener.getLogger().println("All downstream projects complete!");
             Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
             if(this.overallResult.isWorseThan(threshold)) {
                 listener.getLogger().println("Minimum result threshold not met for join project");
             } else {
+                // Construct a launcher since CopyArchiver wants to get the
+                // channel from it. We use the channel of the node where the
+                // splitProject was built on.
+                final Launcher launcher = new NoopLauncher(listener, owner);
+
                 for(Publisher pub : this.joinPublishers) {
                     try {
-                        pub.perform(owner, null, (BuildListener)listener);
+                        pub.perform(owner, launcher, (BuildListener)listener);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -117,4 +128,28 @@ public class JoinAction implements Action {
         }
         
     }
+
+    private static class NoopLauncher extends Launcher {
+
+        public NoopLauncher(TaskListener listener, AbstractBuild<?,?> build) {
+            super(listener, build.getBuiltOn().getChannel());
+        }
+
+        @Override
+        public Proc launch(ProcStarter starter) throws IOException {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public Channel launchChannel(String[] cmd, OutputStream out, FilePath workDir, Map<String, String> envVars) throws IOException, InterruptedException {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public void kill(Map<String, String> modelEnvVars) throws IOException, InterruptedException {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+    }
+
 }
