@@ -1,15 +1,18 @@
 package join;
 
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.model.Cause.UserCause;
+import hudson.model.Descriptor;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Project;
+import hudson.model.Saveable;
 import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
 import hudson.plugins.parameterizedtrigger.PredefinedBuildParameters;
 import hudson.plugins.parameterizedtrigger.ResultCondition;
 import hudson.slaves.DumbSlave;
+import hudson.tasks.Publisher;
+import hudson.util.DescribableList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -158,6 +161,48 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         assertInSequence(splitBuild,slaveBuild,joinBuild);
         assertEquals(slave, slaveBuild.getBuiltOn());
         hudson.removeNode(slave);
+    }
+
+    public void testRoundTrip() throws Exception {
+        final JoinTrigger before = new JoinTrigger(
+                new DescribableList<Publisher, Descriptor<Publisher>>(Saveable.NOOP),
+                joinProject.getName(),
+                false);
+        splitProject.getPublishersList().add(before);
+        final WebClient webClient = createWebClient();
+        webClient.setThrowExceptionOnFailingAjax(false);
+        final HtmlPage configPage = webClient.getPage(splitProject, "configure");
+
+        submit(configPage.getFormByName("config"));
+        final JoinTrigger after = splitProject.getPublishersList().get(JoinTrigger.class);
+
+        assertEquals(before.getJoinProjectsValue(),after.getJoinProjectsValue());
+        assertEquals(before.getEvenIfDownstreamUnstable(), after.getEvenIfDownstreamUnstable());
+        assertEquals(0, after.getJoinPublishers().size());
+    }
+
+    public void testRoundTripWithPublishers() throws Exception {
+        addParameterizedJoinTriggerToProject(splitProject,joinProject, new PredefinedBuildParameters("KEY=value"));
+
+        final JoinTrigger before = splitProject.getPublishersList().get(JoinTrigger.class);
+        final WebClient webClient = createWebClient();
+        webClient.setThrowExceptionOnFailingAjax(false);
+        final HtmlPage configPage = webClient.getPage(splitProject, "configure");
+
+        submit(configPage.getFormByName("config"));
+        final JoinTrigger after = splitProject.getPublishersList().get(JoinTrigger.class);
+
+        assertEquals(before.getJoinProjectsValue(),after.getJoinProjectsValue());
+        assertEquals(before.getEvenIfDownstreamUnstable(), after.getEvenIfDownstreamUnstable());
+        assertEquals(1, after.getJoinPublishers().size());
+        final hudson.plugins.parameterizedtrigger.BuildTrigger paramBtBefore = before.getJoinPublishers().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
+        final hudson.plugins.parameterizedtrigger.BuildTrigger paramBtAfter = after.getJoinPublishers().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
+        final List<BuildTriggerConfig> configsBefore = paramBtBefore.getConfigs();
+        final List<BuildTriggerConfig> configsAfter = paramBtAfter.getConfigs();
+        assertEquals(1, configsAfter.size());
+        final BuildTriggerConfig configBefore = configsBefore.iterator().next();
+        final BuildTriggerConfig configAfter = configsAfter.iterator().next();
+        assertEqualBeans(configBefore, configAfter, "projects,condition");
     }
 
 }

@@ -1,6 +1,5 @@
 package join;
 
-import com.thalesgroup.hudson.plugins.copyarchiver.CopyArchiver;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Descriptor;
@@ -97,7 +96,7 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
             projects.add(project.getName());
         }
         splitProject.getPublishersList().add(new JoinTrigger(new DescribableList<Publisher, Descriptor<Publisher>>(
-                (Saveable)null), StringUtils.join(projects,","), false));
+                Saveable.NOOP), StringUtils.join(projects,","), false));
     }
 
     public static void addParameterizedJoinTriggerToProject(AbstractProject<?,?> splitProject, AbstractProject<?,?> joinProject, AbstractBuildParameters... params) throws Exception {
@@ -107,7 +106,7 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
     public static void addParameterizedJoinTriggerToProject(AbstractProject<?,?> splitProject, AbstractProject<?,?> joinProject, ResultCondition condition, AbstractBuildParameters... params) throws Exception {
         final BuildTriggerConfig config = new hudson.plugins.parameterizedtrigger.BuildTriggerConfig(joinProject.getName(), condition, params);
         splitProject.getPublishersList().add(new JoinTrigger(new DescribableList<Publisher, Descriptor<Publisher>>(
-                (Saveable)null, Collections.singletonList(new hudson.plugins.parameterizedtrigger.BuildTrigger(config))),"",false));
+                Saveable.NOOP, Collections.singletonList(new hudson.plugins.parameterizedtrigger.BuildTrigger(config))),"",false));
     }
 
     public static void addProjectToSplitProject(AbstractProject<?,?> splitProject, AbstractProject<?,?> projectToAdd) throws Exception {

@@ -2,7 +2,6 @@ package join;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -11,7 +10,6 @@ import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.Descriptor;
-import hudson.model.Hudson;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
