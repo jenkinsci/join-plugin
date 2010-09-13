@@ -195,9 +195,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             if (buildTrigger != null) {
                 for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
                     for(AbstractProject<?,?> downStreamProject : config.getProjectList()) {
-                        if (!downStreamProject.isDisabled()) {
-                            ret.add(downStreamProject);
-                        }
+                        ret.add(downStreamProject);
                     }
                 }
             }
