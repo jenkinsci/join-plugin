@@ -50,6 +50,14 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
         return build;
     }
 
+    public static <ProjectT extends AbstractProject<ProjectT,BuildT>, BuildT extends AbstractBuild<ProjectT, BuildT>>
+            BuildT getLastBuild(AbstractProject<ProjectT, BuildT> project) {
+        BuildT build = project.getLastBuild();
+        assertNotNull("Project " + project + " should have been built at least once but was not triggered at all!",
+                build);
+        return build;
+    }
+
     public static void assertNotBuilt(AbstractProject<?, ?> project) {
         final List<?> builds = project.getBuilds();
         assertTrue("Project " + project + " should not have been built!", builds.isEmpty());
@@ -66,6 +74,15 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
         final List<BuildT> buildList = new ArrayList<BuildT>();
         for (AbstractProject<ProjectT, BuildT> project : projects) {
             buildList.add(getUniqueBuild(project));
+        }
+        return buildList;
+    }
+
+    public static <ProjectT extends AbstractProject<ProjectT,BuildT>, BuildT extends AbstractBuild<ProjectT, BuildT>>
+            List<BuildT> getLastBuilds(List<ProjectT> projects) {
+        final List<BuildT> buildList = new ArrayList<BuildT>();
+        for (AbstractProject<ProjectT, BuildT> project : projects) {
+            buildList.add(getLastBuild(project));
         }
         return buildList;
     }

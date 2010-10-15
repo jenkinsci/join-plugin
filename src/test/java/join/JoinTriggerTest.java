@@ -60,6 +60,37 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         assertNotBuilt(joinProject);
     }
 
+    public void testIntermediateProjectDisabled() throws Exception {
+        FreeStyleProject intermediateProject = createFreeStyleProjectWithNoQuietPeriod();
+        
+        FreeStyleProject disabledProject = createFreeStyleProjectWithNoQuietPeriod();
+        disabledProject.disable();
+
+        List<FreeStyleProject> intermediateProjects = new ArrayList<FreeStyleProject>();
+        intermediateProjects.add(intermediateProject);
+        intermediateProjects.add(disabledProject);
+        addProjectsToSplitProject(splitProject, intermediateProjects);
+
+        addJoinTriggerToSplitProject(splitProject, joinProject);
+
+        hudson.rebuildDependencyGraph();
+
+        FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        waitUntilNoActivity();
+        FreeStyleBuild intermediateBuild = getUniqueBuild(intermediateProject);
+        assertNotBuilt(disabledProject);
+        FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
+        assertInSequence(splitBuild, intermediateBuild, joinBuild);
+
+        // Enable the project again and trigger a build
+        disabledProject.enable();
+        splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        waitUntilNoActivity();
+        List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getLastBuilds(intermediateProjects);
+        joinBuild = getLastBuild(joinProject);
+        assertInSequence(splitBuild, intermediateBuilds, joinBuild);
+    }
+    
     public void testRunNonSplitProject() throws Exception {
         List<FreeStyleProject> intermediateProjects = createFreeStyleProjects(2);
         FreeStyleProject otherIntermediateProject = createFreeStyleProjectWithNoQuietPeriod();
