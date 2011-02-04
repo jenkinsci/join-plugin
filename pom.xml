@@ -3,8 +3,7 @@
   <parent>
     <groupId>org.jvnet.hudson.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.371</version>
-    <relativePath>../pom.xml</relativePath>
+    <version>1.388</version>
   </parent>
 
   <artifactId>join</artifactId>
@@ -12,7 +11,7 @@
   <version>1.10-SNAPSHOT</version>
   <name>Join plugin</name>
   <description>Triggering a job after a group of jobs finish</description>
-  <url>http://wiki.hudson-ci.org/display/HUDSON/Join+Plugin</url>
+  <url>http://wiki.jenkins-ci.org/display/JENKINS/Join+Plugin</url>
 
   <developers>
     <developer>
@@ -43,12 +42,18 @@
       <version>0.5.1</version>
       <optional>true</optional>
     </dependency>
-</dependencies>
+  </dependencies>
 
-<properties>
+  <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-</properties>
-<reporting>
+  </properties>
+
+  <scm> 
+    <connection>scm:git:git://github.com/jenkinsci/join-plugin.git</connection> 
+    <developerConnection>scm:git:git@github.com:jenkinsci/join-plugin.git</developerConnection> 
+  </scm> 
+
+  <reporting>
     <plugins>
       <plugin>
           <groupId>org.codehaus.mojo</groupId>
@@ -70,5 +75,5 @@
         </configuration>
       </plugin>
     </plugins>
-</reporting>
+  </reporting>
 </project>
