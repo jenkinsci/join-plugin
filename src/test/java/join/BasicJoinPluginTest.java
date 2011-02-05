@@ -11,11 +11,12 @@ import hudson.plugins.parameterizedtrigger.ResultCondition;
 import hudson.tasks.BuildTrigger;
 import hudson.tasks.Publisher;
 import hudson.util.DescribableList;
+import org.apache.commons.lang.StringUtils;
+import org.jvnet.hudson.test.HudsonTestCase;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.commons.lang.StringUtils;
-import org.jvnet.hudson.test.HudsonTestCase;
 
 /**
  *
@@ -24,6 +25,11 @@ import org.jvnet.hudson.test.HudsonTestCase;
 public abstract class BasicJoinPluginTest extends HudsonTestCase {
     protected FreeStyleProject splitProject;
     protected FreeStyleProject joinProject;
+
+    public BasicJoinPluginTest() {}
+    public BasicJoinPluginTest(String name) {
+        super(name);
+    }
 
     public static void assertInSequence(AbstractBuild<?,?>... builds) {
         AbstractBuild<?,?> previousBuild = null;

@@ -3,26 +3,26 @@ package join;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Proc;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.Action;
+import hudson.model.BuildListener;
+import hudson.model.Cause.UpstreamCause;
+import hudson.model.Descriptor;
+import hudson.model.Items;
+import hudson.model.Result;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.remoting.Channel;
+import hudson.tasks.BuildTrigger;
+import hudson.tasks.Publisher;
+import hudson.util.DescribableList;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Action;
-import hudson.model.BuildListener;
-import hudson.model.Descriptor;
-import hudson.model.Result;
-import hudson.model.Run;
-import hudson.model.TaskListener;
-import hudson.tasks.BuildTrigger;
-import hudson.tasks.Publisher;
-import hudson.util.DescribableList;
-import hudson.model.Items;
-import hudson.model.Cause.UpstreamCause;
 import java.util.Map;
 
 public class JoinAction implements Action {
@@ -33,7 +33,7 @@ public class JoinAction implements Action {
     private DescribableList<Publisher, Descriptor<Publisher>> joinPublishers;
     private boolean evenIfDownstreamUnstable;
     private Result overallResult;
-    
+
     public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger, ArrayList<String> otherDownstream) {
         this.pendingDownstreamProjects = new LinkedList<String>();
         if(buildTrigger != null) {
@@ -41,7 +41,7 @@ public class JoinAction implements Action {
                 if(!project.isDisabled()) {
                     this.pendingDownstreamProjects.add(project.getName());
                 }
-        }
+            }
         }
         for(String proj : otherDownstream) {
             this.pendingDownstreamProjects.add(proj.trim());
@@ -126,7 +126,7 @@ public class JoinAction implements Action {
         public JoinCause(Run<?, ?> arg0) {
             super(arg0);
         }
-        
+
     }
 
     private static class NoopLauncher extends Launcher {

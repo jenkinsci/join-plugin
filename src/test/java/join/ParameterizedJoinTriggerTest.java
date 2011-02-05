@@ -8,8 +8,9 @@ import hudson.model.StringParameterValue;
 import hudson.plugins.parameterizedtrigger.CurrentBuildParameters;
 import hudson.plugins.parameterizedtrigger.PredefinedBuildParameters;
 import hudson.plugins.parameterizedtrigger.ResultCondition;
-import java.util.List;
 import org.jvnet.hudson.test.CaptureEnvironmentBuilder;
+
+import java.util.List;
 
 /**
  *
@@ -30,7 +31,7 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         hudson.rebuildDependencyGraph();
 
         final ParametersAction buildParameters = new ParametersAction(new StringParameterValue("KEY", "value"));
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause(), buildParameters).get();
+        FreeStyleBuild splitBuild = buildAndAssertSuccess(splitProject);
         waitUntilNoActivity();
 
         final FreeStyleBuild intermediateBuild = getUniqueBuild(intermediateProject);
@@ -40,7 +41,7 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         assertEquals("value", builder.getEnvVars().get("KEY"));
 
     }
-    
+
     public void testParametrizedJoinDependencyCurrentBuildParams() throws Exception {
         final CaptureEnvironmentBuilder builder = new CaptureEnvironmentBuilder();
         joinProject.getBuildersList().add(builder);
@@ -73,7 +74,7 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         FreeStyleProject unstableIntermediateProject =
                 createUnstableFreeStyleProject();
         intermediateProjects.add(unstableIntermediateProject);
-        
+
         addProjectsToSplitProject(splitProject, intermediateProjects);
 
         hudson.rebuildDependencyGraph();

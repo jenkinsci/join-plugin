@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Brian Westrich, Martin Eigenbrodt
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,17 +27,20 @@ import hudson.Extension;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Plugin;
-import hudson.maven.AbstractMavenProject;
+import hudson.matrix.MatrixAggregatable;
+import hudson.matrix.MatrixAggregator;
+import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.Cause;
+import hudson.model.Cause.UpstreamCause;
 import hudson.model.CauseAction;
+import hudson.model.DependecyDeclarer;
 import hudson.model.DependencyGraph;
+import hudson.model.DependencyGraph.Dependency;
 import hudson.model.Descriptor;
-import hudson.model.Descriptor.FormException;
-import hudson.model.FreeStyleProject;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.Items;
@@ -46,9 +49,6 @@ import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Saveable;
 import hudson.model.TaskListener;
-import hudson.model.Cause.UpstreamCause;
-import hudson.model.DependecyDeclarer;
-import hudson.model.DependencyGraph.Dependency;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
 import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
@@ -61,6 +61,9 @@ import hudson.tasks.BuildTrigger;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.DescribableList;
+import join.JoinAction.JoinCause;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -69,14 +72,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import join.JoinAction.JoinCause;
-
-import net.sf.json.JSONObject;
-
-import org.kohsuke.stapler.StaplerRequest;
-
 @Extension
-public class JoinTrigger extends Recorder implements DependecyDeclarer {
+public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAggregatable {
     private static final Logger LOGGER = Logger.getLogger(JoinTrigger.class.getName());
 
 
@@ -119,7 +116,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         ArrayList<String> ret = new ArrayList<String>();
         Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
         if (parameterizedTrigger != null) {
-            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger = 
+            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger =
                 build.getProject().getPublishersList().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
             if (buildTrigger != null) {
                 for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
@@ -141,7 +138,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         }
 
         final List<AbstractProject<?,?>> downstreamProjects = getAllDownstream(owner);
-        // If there is no intermediate project add the split project and use it as 
+        // If there is no intermediate project add the split project and use it as
         // the one triggering the downstream build
         if (downstreamProjects.isEmpty()) {
             downstreamProjects.add(owner);
@@ -172,14 +169,10 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
 
     static boolean canDeclare(AbstractProject<?,?> owner) {
             // Inner class added in Hudson 1.341
-            return DependencyGraph.class.getClasses().length > 0
-                    // See HUDSON-6274 -- currently Maven projects call scheduleProject
-                    // directly, so would not get parameters from DependencyGraph.
-                    // Remove this condition when HUDSON-6274 is implemented.
-                    && !owner.getClass().getName().equals("hudson.maven.MavenModuleSet");
+            return DependencyGraph.class.getClasses().length > 0;
     }
 
-    
+
     public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project) {
         List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
         downstream.addAll(getParameterizedDownstream(project));
@@ -190,7 +183,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
         Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
         if (parameterizedTrigger != null) {
-            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger = 
+            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger =
                 project.getPublishersList().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
             if (buildTrigger != null) {
                 for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
@@ -212,6 +205,17 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             }
         }
         return ret;
+    }
+
+    @Override
+    public MatrixAggregator createAggregator(MatrixBuild build, Launcher launcher, BuildListener listener) {
+        return new MatrixAggregator(build, launcher, listener) {
+            @Override
+            public boolean endBuild() throws InterruptedException, IOException {
+                perform(build,launcher,listener);
+                return true;
+            }
+        };
     }
 
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
@@ -273,16 +277,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
-            boolean freeStyle = FreeStyleProject.class.isAssignableFrom(jobType);
-            if(freeStyle) {
-                return true;
-            }
-            Plugin mavenProjectPlugin = Hudson.getInstance().getPlugin("maven-plugin");
-            return mavenProjectPlugin != null && AbstractMavenProject.class.isAssignableFrom(jobType);
+            // We can add this to any project!
+            return true;
         }
 
         public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
-            // UGLY: for promotion process, this option doesn't make sense. 
+            // UGLY: for promotion process, this option doesn't make sense.
             return !jobType.getName().contains("PromotionProcess");
         }
 
@@ -300,7 +300,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
             //list.add(Hudson.getInstance().getDescriptorByType(hudson.tasks.Mailer.DescriptorImpl.class));
             return list;
         }
-        
+
         public List<Descriptor<Publisher>> getApplicableExperimentalDescriptors(AbstractProject<?,?> project) {
             List<Descriptor<Publisher>> list = Functions.getPublisherDescriptors(project);
             LOGGER.finest("publisher count before removing publishers: " + list.size());
@@ -340,7 +340,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
                     return;
                 }
                 AbstractBuild<?,?> abstractBuild = (AbstractBuild<?,?>)run;
-                
+
                 listener.getLogger().println("Notifying upstream projects of job completion");
                 String upstreamProject = null;
                 int upstreamJobNumber = 0;
@@ -348,7 +348,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
                 if(ca == null) {
                     listener.getLogger().println("Join notifier requires a CauseAction");
                     return;
-                } 
+                }
                 for(Cause c : ca.getCauses()) {
                     if(!(c instanceof UpstreamCause)) continue;
                     if(c instanceof JoinCause) continue;
@@ -357,7 +357,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
                 }
                 return;
             }
-            
+
             private void notifyJob(AbstractBuild<?,?> abstractBuild, TaskListener listener, String upstreamProjectName,
                     int upstreamJobNumber) {
                 List<AbstractProject> upstreamList = Items.fromNameList(upstreamProjectName,AbstractProject.class);
@@ -367,7 +367,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
                 }
                 AbstractProject<?,?> upstreamProject = upstreamList.get(0);
                 Run upstreamRun = upstreamProject.getBuildByNumber(upstreamJobNumber);
-                
+
                 if(upstreamRun == null) {
                     listener.getLogger().println("Join notifier cannot find upstream run: " + upstreamProjectName + " number " + upstreamJobNumber);
                     return;
@@ -376,14 +376,14 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
                     LOGGER.fine("Upstream run is not an AbstractBuild: " + upstreamProjectName + " number " + upstreamJobNumber);
                     return;
                 }
-                
+
                 AbstractBuild<?,?> upstreamBuild = (AbstractBuild<?,?>)upstreamRun;
                 JoinAction ja = upstreamRun.getAction(JoinAction.class);
                 if(ja == null) {
                     // does not go in the build log, since this is normal for any downstream project that
                     // runs without the join plugin enabled
                     LOGGER.finer("Join notifier cannot find upstream JoinAction: " + upstreamProjectName + " number " + upstreamJobNumber);
-                    return;            
+                    return;
                 }
                 listener.getLogger().println("Notifying upstream of completion: " + upstreamProjectName + " #" + upstreamJobNumber);
                 ja.downstreamFinished(upstreamBuild, abstractBuild, listener);
@@ -426,11 +426,11 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
         }
         return false;
     }
-    
+
     public boolean useExperimentalPostBuildActions(AbstractProject<?,?> project) {
         return containsAnyDescriptor(DescriptorImpl.DESCRIPTOR.getApplicableExperimentalDescriptors(project));
     }
-    
+
     public String getJoinProjectsValue() {
         return joinProjects;
     }
@@ -452,7 +452,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
     public boolean getEvenIfDownstreamUnstable() {
         return this.evenIfDownstreamUnstable;
     }
-    
+
     private Object readResolve() {
         if(this.joinPublishers == null) {
             this.joinPublishers = new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
@@ -463,7 +463,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer {
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.NONE;
     }
-    
+
     private static class JoinDependency<DEP extends Dependency> extends Dependency {
                 private AbstractProject<?,?> splitProject;
         protected DEP splitDependency;
