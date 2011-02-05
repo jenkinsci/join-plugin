@@ -3,7 +3,6 @@ package join;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
-import com.sun.istack.internal.Nullable;
 import hudson.matrix.MatrixProject;
 import hudson.maven.MavenModuleSet;
 import hudson.model.AbstractBuild;
@@ -35,7 +34,7 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
             ImmutableMap.<Class<? extends AbstractProject<?,?>>, Function<JoinTriggerAllCombinationsTest,AbstractProject<?,?>>>of(
                     FreeStyleProject.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
                         @Override
-                        public AbstractProject<?, ?> apply(@Nullable JoinTriggerAllCombinationsTest from) {
+                        public AbstractProject<?, ?> apply(JoinTriggerAllCombinationsTest from) {
                             try {
                                 return from.createFreeStyleProjectWithNoQuietPeriod();
                             } catch (Exception e) {
@@ -46,7 +45,7 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
                     },
                     MavenModuleSet.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
                         @Override
-                        public AbstractProject<?, ?> apply(@Nullable JoinTriggerAllCombinationsTest from) {
+                        public AbstractProject<?, ?> apply(JoinTriggerAllCombinationsTest from) {
                             try {
                                 MavenModuleSet mavenProject = from.createMavenProject();
                                 mavenProject.setQuietPeriod(0);
@@ -61,7 +60,7 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
                     },
                     MatrixProject.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
                         @Override
-                        public AbstractProject<?, ?> apply(@Nullable JoinTriggerAllCombinationsTest from) {
+                        public AbstractProject<?, ?> apply(JoinTriggerAllCombinationsTest from) {
                             try {
                                 MatrixProject matrixProject = from.createMatrixProject();
                                 matrixProject.setQuietPeriod(0);
