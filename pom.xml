@@ -1,9 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.jvnet.hudson.plugins</groupId>
+    <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.388</version>
+    <version>1.396</version>
   </parent>
 
   <artifactId>join</artifactId>
@@ -32,7 +32,7 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.jvnet.hudson.main</groupId>
+      <groupId>org.jenkins-ci.main</groupId>
       <artifactId>maven-plugin</artifactId>
       <optional>true</optional>
     </dependency>
@@ -48,10 +48,18 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
-  <scm> 
-    <connection>scm:git:git://github.com/jenkinsci/join-plugin.git</connection> 
-    <developerConnection>scm:git:git@github.com:jenkinsci/join-plugin.git</developerConnection> 
-  </scm> 
+  <scm>
+    <connection>scm:git:git://github.com/jenkinsci/join-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/join-plugin.git</developerConnection>
+  </scm>
+
+  <repositories>
+      <repository>
+          <id>jenkins-ci</id>
+          <url>http://maven.jenkins-ci.org/content/repositories/releases</url>
+      </repository>
+  </repositories>
+
 
   <reporting>
     <plugins>
