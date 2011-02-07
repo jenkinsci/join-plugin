@@ -27,12 +27,14 @@ import hudson.Extension;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Plugin;
+import hudson.Util;
 import hudson.matrix.MatrixAggregatable;
 import hudson.matrix.MatrixAggregator;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
+import hudson.model.AutoCompletionCandidates;
 import hudson.model.BuildListener;
 import hudson.model.Cause;
 import hudson.model.Cause.UpstreamCause;
@@ -61,14 +63,18 @@ import hudson.tasks.BuildTrigger;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.DescribableList;
+import hudson.util.FormValidation;
 import join.JoinAction.JoinCause;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang.StringUtils;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -260,8 +266,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
                 new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP, newList);
 
             LOGGER.finer("Parsed " + publishers.size() + " publishers");
+            String joinProjectsValue = Util.fixNull(formData.getString("joinProjectsValue")).trim();
+            if (joinProjectsValue.endsWith(",")) {
+                joinProjectsValue = joinProjectsValue.substring(0, joinProjectsValue.length()-1).trim();
+            }
             return new JoinTrigger(publishers,
-                formData.getString("joinProjectsValue"),
+                    joinProjectsValue,
                 formData.has("evenIfDownstreamUnstable") && formData.getBoolean("evenIfDownstreamUnstable"));
         }
 
@@ -314,19 +324,32 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         /**
          * Form validation method.
          */
-//        public FormValidation doCheckChildProjectsValue(@QueryParameter String value ) {
-//            StringTokenizer tokens = new StringTokenizer(Util.fixNull(value),",");
-//            while(tokens.hasMoreTokens()) {
-//                String projectName = tokens.nextToken().trim();
-//                Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
-//                if(item==null)
-//                    return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,AbstractProject.findNearest(projectName).getName()));
-//                if(!(item instanceof AbstractProject))
-//                    return FormValidation.error(Messages.BuildTrigger_NotBuildable(projectName));
-//            }
-//
-//            return FormValidation.ok();
-//        }
+        public FormValidation doCheckJoinProjectsValue(@QueryParameter String value ) {
+            StringTokenizer tokens = new StringTokenizer(Util.fixNull(value),",");
+            while(tokens.hasMoreTokens()) {
+                String projectName = tokens.nextToken().trim();
+                if (StringUtils.isNotEmpty(projectName)) {
+                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    if(item==null)
+                        return FormValidation.error("No such project");
+                    if(!(item instanceof AbstractProject))
+                        return FormValidation.error("Not buildable");
+                }
+            }
+
+            return FormValidation.ok();
+        }
+
+        public AutoCompletionCandidates doAutoCompleteJoinProjectsValue(@QueryParameter String value) {
+            AutoCompletionCandidates candidates = new AutoCompletionCandidates();
+            List<AbstractProject> projects = Hudson.getInstance().getItems(AbstractProject.class);
+            for (AbstractProject project : projects) {
+                if (project.getFullName().startsWith(value)) {
+                    candidates.add(project.getFullName());
+                }
+            }
+            return candidates;
+        }
 
         @Extension
         public static class RunListenerImpl extends RunListener<Run> {

@@ -6,8 +6,8 @@
     </f:entry>
   </j:if>
   <f:entry title="${%Projects to build once, after all downstream projects have finished}"
-           help="/plugin/join/help/joinProjects.html">
-    <f:textbox name="join.joinProjectsValue" field="joinProjectsValue"/>
+           help="/plugin/join/help/joinProjects.html" field="joinProjectsValue">
+    <f:textbox name="join.joinProjectsValue" autoCompleteDelimChar=","/>
   </f:entry>
 
   <j:if test="${descriptor.getApplicableDescriptors().size() > 0}">
