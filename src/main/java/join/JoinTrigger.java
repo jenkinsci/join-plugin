@@ -24,7 +24,6 @@
 package join;
 
 import hudson.Extension;
-import hudson.Functions;
 import hudson.Launcher;
 import hudson.Plugin;
 import hudson.Util;
@@ -253,19 +252,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
                 }
             }
 
-            JSONObject experimentalpostbuild = formData.optJSONObject("experimentalpostbuildactions");
-            if(experimentalpostbuild != null) {
-                JSONObject joinTriggers = experimentalpostbuild.optJSONObject("joinPublishers");
-                if(joinTriggers != null) {
-                    LOGGER.finest("EPB: " + joinTriggers.toString() + joinTriggers.isArray());
-                    extractAndAddPublisher(joinTriggers, Publisher.all(), newList, req);
-                }
-            }
-
             DescribableList<Publisher,Descriptor<Publisher>> publishers =
                 new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP, newList);
 
             LOGGER.finer("Parsed " + publishers.size() + " publishers");
+
+            // Remove trailing "," inserted by YUI autocompletion
             String joinProjectsValue = Util.fixNull(formData.getString("joinProjectsValue")).trim();
             if (joinProjectsValue.endsWith(",")) {
                 joinProjectsValue = joinProjectsValue.substring(0, joinProjectsValue.length()-1).trim();
@@ -308,16 +300,6 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             }
             // See issue 4384.  Supporting the mailer here breaks its use as the regular post-build action.
             //list.add(Hudson.getInstance().getDescriptorByType(hudson.tasks.Mailer.DescriptorImpl.class));
-            return list;
-        }
-
-        public List<Descriptor<Publisher>> getApplicableExperimentalDescriptors(AbstractProject<?,?> project) {
-            List<Descriptor<Publisher>> list = Functions.getPublisherDescriptors(project);
-            LOGGER.finest("publisher count before removing publishers: " + list.size());
-            // need to prevent infinite recursion, so we remove the Join publisher.
-            list.remove(Hudson.getInstance().getDescriptorByType(DescriptorImpl.class));
-            list.removeAll(getApplicableDescriptors());
-            LOGGER.finest("publisher count after removing publishers: " + list.size());
             return list;
         }
 
@@ -448,10 +430,6 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
            }
         }
         return false;
-    }
-
-    public boolean useExperimentalPostBuildActions(AbstractProject<?,?> project) {
-        return containsAnyDescriptor(DescriptorImpl.DESCRIPTOR.getApplicableExperimentalDescriptors(project));
     }
 
     public String getJoinProjectsValue() {

@@ -22,17 +22,6 @@
          </table>
         </f:entry>
     </f:optionalBlock>
-    <!--
-    <f:optionalBlock title="Run experimental post-build actions at join"
-        checked="${instance.useExperimentalPostBuildActions(it)}" help="/plugin/join/help/postbuild.html">
-        <f:entry>
-         <table>
-          <j:set var="descriptors" value="${null}"/>
-            <f:descriptorList title="Experimental Post-Join Actions" descriptors="${descriptor.getApplicableExperimentalDescriptors(it)}" field="joinPublishers"/>
-         </table>
-        </f:entry>
-    </f:optionalBlock>
-    -->
    </table>
   </f:nested>
   </j:if>
