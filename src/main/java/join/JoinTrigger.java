@@ -212,8 +212,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return new MatrixAggregator(build, launcher, listener) {
             @Override
             public boolean endBuild() throws InterruptedException, IOException {
-                perform(build,launcher,listener);
-                return true;
+                return perform(build,launcher,listener);
             }
         };
     }
