@@ -122,7 +122,7 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
         addJoinTriggerToSplitProject(splitProject, joinProject);
         Hudson.getInstance().rebuildDependencyGraph();
         final AbstractBuild<?,?> splitBuild = splitProject.scheduleBuild2(0, new Cause.UserCause()).get();
-        waitUntilNoActivity();
+        waitUntilNoActivityUpTo(120*1000);
         AbstractBuild<?, ?> intBuild = getUniqueBuild(intProject);
         AbstractBuild<?, ?> joinBuild = getUniqueBuild(joinProject);
         assertBuildStatusSuccess(intBuild);
