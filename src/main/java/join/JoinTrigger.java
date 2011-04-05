@@ -73,7 +73,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -257,13 +256,25 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             LOGGER.finer("Parsed " + publishers.size() + " publishers");
 
             // Remove trailing "," inserted by YUI autocompletion
-            String joinProjectsValue = Util.fixNull(formData.getString("joinProjectsValue")).trim();
-            if (joinProjectsValue.endsWith(",")) {
-                joinProjectsValue = joinProjectsValue.substring(0, joinProjectsValue.length()-1).trim();
-            }
+            String joinProjectsValue = reformatJoinProjectsValue(formData.getString("joinProjectsValue"));
             return new JoinTrigger(publishers,
                     joinProjectsValue,
                 formData.has("evenIfDownstreamUnstable") && formData.getBoolean("evenIfDownstreamUnstable"));
+        }
+
+        public String reformatJoinProjectsValue(String joinProjectsValue) {
+            String[] tokens = Util.fixNull(joinProjectsValue).split(",");
+            List<AbstractProject<?, ?>> abstractProjects = new ArrayList<AbstractProject<?, ?>>();
+            for (String token : tokens) {
+                String projectName = token.trim();
+                if (StringUtils.isNotEmpty(projectName)) {
+                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    if (item instanceof AbstractProject) {
+                        abstractProjects.add((AbstractProject<?, ?>) item);
+                    }
+                }
+            }
+            return Items.toNameList(abstractProjects);
         }
 
         private void extractAndAddPublisher(JSONObject json, List<Descriptor<Publisher>> applicableDescriptors, List<Publisher> newList, StaplerRequest req) throws FormException {
@@ -306,9 +317,9 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
          * Form validation method.
          */
         public FormValidation doCheckJoinProjectsValue(@QueryParameter String value ) {
-            StringTokenizer tokens = new StringTokenizer(Util.fixNull(value),",");
-            while(tokens.hasMoreTokens()) {
-                String projectName = tokens.nextToken().trim();
+            String[] tokens = Util.fixNull(value).split(",");
+            for (String token : tokens) {
+                String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
                     Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
                     if(item==null)
