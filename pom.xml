@@ -56,7 +56,8 @@
 
   <scm>
     <connection>scm:git:git://github.com/jenkinsci/join-plugin.git</connection>
-    <developerConnection>scm:git:git@github.com:jenkinsci/join-plugin.git</developerConnection>
+    <developerConnection>scm:git:ssh://git@github.com/jenkinsci/join-plugin.git</developerConnection>
+    <url>https://github.com/jenkinsci/join-plugin</url>
   </scm>
 
   <repositories>

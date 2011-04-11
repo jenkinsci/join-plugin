@@ -333,14 +333,21 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         }
 
         public AutoCompletionCandidates doAutoCompleteJoinProjectsValue(@QueryParameter String value) {
-            AutoCompletionCandidates candidates = new AutoCompletionCandidates();
+            String prefix = Util.fixNull(value);
             List<AbstractProject> projects = Hudson.getInstance().getItems(AbstractProject.class);
+            List<String> candidates = new ArrayList<String>();
+            List<String> lowPrioCandidates = new ArrayList<String>();
             for (AbstractProject project : projects) {
-                if (project.getFullName().startsWith(value)) {
+                if (project.getFullName().startsWith(prefix)) {
                     candidates.add(project.getFullName());
+                } else if (project.getFullName().toLowerCase().startsWith(prefix.toLowerCase())) {
+                    lowPrioCandidates.add(project.getFullName());
                 }
             }
-            return candidates;
+            AutoCompletionCandidates autoCand = new AutoCompletionCandidates();
+            autoCand.add(candidates.toArray(new String[candidates.size()]));
+            autoCand.add(lowPrioCandidates.toArray(new String[candidates.size()]));
+            return autoCand;
         }
 
         @Extension
