@@ -23,6 +23,7 @@
  */
 package join;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.Plugin;
@@ -110,27 +111,54 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
             BuildListener listener) throws InterruptedException, IOException {
         BuildTrigger buildTrigger = build.getProject().getPublishersList().get(BuildTrigger.class);
-        JoinAction joinAction = new JoinAction(this, buildTrigger, tryGetParameterizedDownstreamNames(build));
+        JoinAction joinAction = new JoinAction(this, buildTrigger, tryGetParameterizedDownstreamNames(build,listener));
         build.addAction(joinAction);
         joinAction.checkPendingDownstream(build, listener);
         return true;
     }
 
-    private ArrayList<String> tryGetParameterizedDownstreamNames(AbstractBuild<?, ?> build) {
+    private ArrayList<String> tryGetParameterizedDownstreamNames(AbstractBuild<?, ?> build, BuildListener listener) {
         ArrayList<String> ret = new ArrayList<String>();
+        EnvVars env = null;
+        try {
+            env = build.getEnvironment(listener);
+        } catch (Exception e) {
+            listener.getLogger().print(e);
+        }
+
+        for (AbstractProject<?,?> project :
+                getParameterizedDownstreamProjects(build.getProject().getPublishersList(), env)) {
+            if (!project.isDisabled()) {
+                ret.add(project.getName());
+            }
+        }
+        return ret;
+    }
+
+    private List<BuildTriggerConfig> getBuildTriggerConfigs(
+            DescribableList<Publisher,Descriptor<Publisher>> publishers) {
+        List<BuildTriggerConfig> ret = new ArrayList<BuildTriggerConfig>();
         Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
         if (parameterizedTrigger != null) {
             hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger =
-                build.getProject().getPublishersList().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
+                publishers.get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
             if (buildTrigger != null) {
                 for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
-                    for(AbstractProject project : config.getProjectList()) {
-                        if (!project.isDisabled()) {
-                        ret.add(project.getName());
-                    }
+                    ret.add(config);
                 }
             }
         }
+        return ret;
+    }
+
+    private List<AbstractProject<?,?>> getParameterizedDownstreamProjects(
+            DescribableList<Publisher,Descriptor<Publisher>> publishers, EnvVars env) {
+        List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
+        for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config :
+                getBuildTriggerConfigs(publishers)) {
+            for (AbstractProject<?,?> project : config.getProjectList(env)) {
+                ret.add(project);
+            }
         }
         return ret;
     }
@@ -147,19 +175,13 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         if (downstreamProjects.isEmpty()) {
             downstreamProjects.add(owner);
         }
-        Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
+
         for (AbstractProject<?,?> downstreamProject: downstreamProjects) {
-            if (parameterizedTrigger != null) {
-                hudson.plugins.parameterizedtrigger.BuildTrigger paramBt =
-                        joinPublishers.get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
-                if (paramBt != null) {
-                    for (BuildTriggerConfig config : paramBt.getConfigs()) {
-                        for (AbstractProject<?,?> joinProject : config.getProjectList()) {
-                            ParameterizedJoinDependency dependency =
-                                new ParameterizedJoinDependency(downstreamProject, joinProject, owner, config);
-                            graph.addDependency(dependency);
-                        }
-                    }
+            for (BuildTriggerConfig config : getBuildTriggerConfigs(joinPublishers)) {
+                for (AbstractProject<?,?> joinProject : config.getProjectList(null)) {
+                    ParameterizedJoinDependency dependency =
+                            new ParameterizedJoinDependency(downstreamProject, joinProject, owner, config);
+                    graph.addDependency(dependency);
                 }
             }
 
@@ -179,25 +201,8 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project) {
         List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
-        downstream.addAll(getParameterizedDownstream(project));
+        downstream.addAll(getParameterizedDownstreamProjects(project.getPublishersList(), null));
         return downstream;
-    }
-
-    public List<AbstractProject<?,?>> getParameterizedDownstream(AbstractProject<?,?> project) {
-        ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
-        Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
-        if (parameterizedTrigger != null) {
-            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger =
-                project.getPublishersList().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
-            if (buildTrigger != null) {
-                for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config : buildTrigger.getConfigs()) {
-                    for(AbstractProject<?,?> downStreamProject : config.getProjectList()) {
-                        ret.add(downStreamProject);
-                    }
-                }
-            }
-        }
-        return ret;
     }
 
     public List<AbstractProject<?,?>> getBuildTriggerDownstream(AbstractProject<?,?> project) {
