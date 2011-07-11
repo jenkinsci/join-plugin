@@ -20,7 +20,6 @@ import hudson.util.DescribableList;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,7 @@ public class JoinAction implements Action {
     private boolean evenIfDownstreamUnstable;
     private Result overallResult;
 
-    public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger, ArrayList<String> otherDownstream) {
+    public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger, List<String> otherDownstream) {
         this.pendingDownstreamProjects = new LinkedList<String>();
         if(buildTrigger != null) {
             for(AbstractProject project : buildTrigger.getChildProjects()) {
@@ -102,9 +101,9 @@ public class JoinAction implements Action {
                     try {
                         pub.perform(owner, launcher, (BuildListener)listener);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        listener.getLogger().print(e.toString());
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        listener.getLogger().print(e.toString());
                     }
                 }
                 if (!JoinTrigger.canDeclare(owner.getProject())) {
