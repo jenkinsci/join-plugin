@@ -33,7 +33,6 @@ import hudson.matrix.MatrixAggregator;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.Action;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.BuildListener;
 import hudson.model.Cause;
@@ -41,21 +40,18 @@ import hudson.model.Cause.UpstreamCause;
 import hudson.model.CauseAction;
 import hudson.model.DependecyDeclarer;
 import hudson.model.DependencyGraph;
-import hudson.model.DependencyGraph.Dependency;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.Items;
 import hudson.model.Project;
-import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Saveable;
 import hudson.model.TaskListener;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
+import hudson.plugins.downstream_ext.DownstreamTrigger;
 import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
-import hudson.plugins.parameterizedtrigger.ParameterizedDependency;
-import hudson.plugins.parameterizedtrigger.ResultCondition;
 import hudson.tasks.BuildStep;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
@@ -71,7 +67,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -113,7 +108,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
             BuildListener listener) throws InterruptedException, IOException {
         BuildTrigger buildTrigger = build.getProject().getPublishersList().get(BuildTrigger.class);
-        JoinAction joinAction = new JoinAction(this, buildTrigger, tryGetParameterizedDownstreamNames(build,listener));
+        JoinAction joinAction = new JoinAction(this, getAllDownstream(build.getProject(), build.getEnvironment(listener)));
         build.addAction(joinAction);
         joinAction.checkPendingDownstream(build, listener);
         return true;
@@ -125,7 +120,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             return;
         }
 
-        final List<AbstractProject<?,?>> downstreamProjects = getAllDownstream(owner);
+        final List<AbstractProject<?,?>> downstreamProjects = getAllDownstream(owner, null);
         // If there is no intermediate project add the split project and use it as
         // the one triggering the downstream build
         if (downstreamProjects.isEmpty()) {
@@ -195,15 +190,32 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return ret;
     }
 
+    private List<AbstractProject<?,?>> getDownstreamExtDownstream(
+            DescribableList<Publisher,Descriptor<Publisher>> publishers) {
+        List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?, ?>>();
+        Plugin extDownstream = Hudson.getInstance().getPlugin("downstream-ext");
+        if (extDownstream != null) {
+            DownstreamTrigger buildTrigger =
+                publishers.get(DownstreamTrigger.class);
+            if (buildTrigger != null) {
+                for (AbstractProject<?,?> project : buildTrigger.getChildProjects()) {
+                    ret.add(project);
+                }
+            }
+        }
+        return ret;
+    }
+
     static boolean canDeclare(AbstractProject<?,?> owner) {
             // Inner class added in Hudson 1.341
             return DependencyGraph.class.getClasses().length > 0;
     }
 
 
-    public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project) {
+    public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project, EnvVars env) {
         List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
-        downstream.addAll(getParameterizedDownstreamProjects(project.getPublishersList(), null));
+        downstream.addAll(getParameterizedDownstreamProjects(project.getPublishersList(), env));
+        downstream.addAll(getDownstreamExtDownstream(project.getPublishersList()));
         return downstream;
     }
 
@@ -487,190 +499,4 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return BuildStepMonitor.NONE;
     }
 
-    private static class JoinDependency<DEP extends Dependency> extends Dependency {
-                private AbstractProject<?,?> splitProject;
-        protected DEP splitDependency;
-
-        protected JoinDependency(AbstractProject<?,?> upstream, AbstractProject<?,?> downstream, AbstractProject<?,?> splitProject) {
-            super(upstream, downstream);
-            this.splitProject = splitProject;
-        }
-
-        @Override
-        public boolean shouldTriggerBuild(AbstractBuild build, TaskListener listener, List<Action> actions) {
-            AbstractBuild<?,?> splitBuild = getSplitBuild(build);
-            if (splitBuild != null) {
-                final JoinAction joinAction = splitBuild.getAction(JoinAction.class);
-                if(joinAction != null) {
-                    listener.getLogger().println("Notifying upstream build " + splitBuild + " of job completion");
-                    boolean joinDownstreamFinished = joinAction.downstreamFinished(splitBuild, build, listener);
-                    joinDownstreamFinished = joinDownstreamFinished &&
-                            conditionIsMet(joinAction.getOverallResult()) &&
-                                splitDependency.shouldTriggerBuild(splitBuild, listener, actions);
-                    return joinDownstreamFinished;
-                }
-            }
-            // does not go in the build log, since this is normal for any downstream project that
-            // runs without the join plugin enabled
-            LOGGER.log(Level.FINER, "Join notifier cannot find upstream JoinAction: {0}", splitBuild);
-            return false;
-        }
-
-        private AbstractBuild<?,?> getSplitBuild(AbstractBuild<?,?> build) {
-            final List<Cause> causes = build.getCauses();
-            AbstractBuild<?,?> splitBuild = null;
-            // If there is no intermediate project this will happen
-            if (splitProject.getName().equals(build.getProject().getName())) {
-                splitBuild = build;
-            }
-            for (Cause cause : causes) {
-                if (cause instanceof JoinAction.JoinCause) {
-                    continue;
-                }
-                if (cause instanceof UpstreamCause) {
-                    UpstreamCause uc = (UpstreamCause) cause;
-                    final int upstreamBuildNum = uc.getUpstreamBuild();
-                    final String upstreamProject = uc.getUpstreamProject();
-                    if (splitProject.getName().equals(upstreamProject)) {
-                        final Run<?,?> upstreamRun = splitProject.getBuildByNumber(upstreamBuildNum);
-                        if (upstreamRun instanceof AbstractBuild<?,?>) {
-                            splitBuild = (AbstractBuild<?,?>) upstreamRun;
-                            break;
-                        }
-                    }
-                }
-            }
-            return splitBuild;
-        }
-
-        protected boolean conditionIsMet(Result overallResult) {
-            return true;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            if (!super.equals(obj)) {
-                return false;
-            }
-            final JoinDependency<DEP> other = (JoinDependency<DEP>) obj;
-            if (this.splitProject != other.splitProject && (this.splitProject == null || !this.splitProject.equals(other.splitProject))) {
-                return false;
-            }
-            if (this.splitDependency != other.splitDependency && (this.splitDependency == null || !this.splitDependency.equals(other.splitDependency))) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 3;
-            hash = 79 * hash + super.hashCode();
-            hash = 79 * hash + (this.splitProject != null ? this.splitProject.hashCode() : 0);
-            hash = 79 * hash + (this.splitDependency != null ? this.splitDependency.hashCode() : 0);
-            return hash;
-        }
-
-
-
-    }
-
-    private static class ParameterizedJoinDependency extends JoinDependency<ParameterizedDependency> {
-        private BuildTriggerConfig config;
-
-        private ParameterizedJoinDependency(AbstractProject<?,?> upstream, AbstractProject<?,?> downstream, AbstractProject<?,?> splitProject,BuildTriggerConfig config) {
-            super(upstream, downstream,splitProject);
-            splitDependency = new ParameterizedDependency(splitProject, downstream, config);
-            this.config = config;
-        }
-
-        @Override
-        protected boolean conditionIsMet(Result overallResult) {
-            // This is bad but sadly the method is package-private and not public!
-            try {
-                ResultCondition condition = config.getCondition();
-                Method isMetMethod = condition.getClass().getDeclaredMethod("isMet", Result.class);
-                isMetMethod.setAccessible(true);
-                return (Boolean)isMetMethod.invoke(condition, overallResult);
-            } catch (Exception ex) {
-                Logger.getLogger(ParameterizedJoinDependency.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            return true;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            if (!super.equals(obj)) {
-                return false;
-            }
-            final ParameterizedJoinDependency other = (ParameterizedJoinDependency) obj;
-            if (this.config != other.config && (this.config == null || !this.config.equals(other.config))) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 5;
-            hash = 61 * hash + super.hashCode();
-            hash = 61 * hash + (this.config != null ? this.config.hashCode() : 0);
-            return hash;
-        }
-
-
-    }
-
-    private static class JoinTriggerDependency extends JoinDependency<Dependency> {
-        boolean evenIfDownstreamUnstable;
-        JoinTriggerDependency(AbstractProject<?,?> upstream, AbstractProject<?,?> downstream, AbstractProject<?,?> splitProject,boolean evenIfDownstreamUnstable) {
-            super(upstream, downstream, splitProject);
-            this.evenIfDownstreamUnstable = evenIfDownstreamUnstable;
-            splitDependency = new Dependency(splitProject, downstream);
-        }
-
-        @Override
-        protected boolean conditionIsMet(Result overallResult) {
-            Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
-            return overallResult.isBetterOrEqualTo(threshold);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            if (!super.equals(obj)) {
-                return false;
-            }
-            final JoinTriggerDependency other = (JoinTriggerDependency) obj;
-            if (this.evenIfDownstreamUnstable != other.evenIfDownstreamUnstable) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 3;
-            hash = 71 * hash + super.hashCode();
-            hash = 71 * hash + (this.evenIfDownstreamUnstable ? 1 : 0);
-            return hash;
-        }
-    }
 }

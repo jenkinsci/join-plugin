@@ -14,7 +14,6 @@ import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.remoting.Channel;
-import hudson.tasks.BuildTrigger;
 import hudson.tasks.Publisher;
 import hudson.util.DescribableList;
 
@@ -33,17 +32,12 @@ public class JoinAction implements Action {
     private boolean evenIfDownstreamUnstable;
     private Result overallResult;
 
-    public JoinAction(JoinTrigger joinTrigger, BuildTrigger buildTrigger, List<String> otherDownstream) {
+    public JoinAction(JoinTrigger joinTrigger, List<AbstractProject<?,?>> downstream) {
         this.pendingDownstreamProjects = new LinkedList<String>();
-        if(buildTrigger != null) {
-            for(AbstractProject project : buildTrigger.getChildProjects()) {
-                if(!project.isDisabled()) {
-                    this.pendingDownstreamProjects.add(project.getName());
-                }
+        for(AbstractProject<?,?> project : downstream) {
+            if(!project.isDisabled()) {
+                this.pendingDownstreamProjects.add(project.getName());
             }
-        }
-        for(String proj : otherDownstream) {
-            this.pendingDownstreamProjects.add(proj.trim());
         }
         this.joinProjects = joinTrigger.getJoinProjectsValue();
         this.joinPublishers = joinTrigger.getJoinPublishers();

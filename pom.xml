@@ -32,6 +32,12 @@
       <optional>true</optional>
     </dependency>
     <dependency>
+      <groupId>org.jvnet.hudson.plugins</groupId>
+      <artifactId>downstream-ext</artifactId>
+      <version>1.6</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>maven-plugin</artifactId>
       <optional>true</optional>
