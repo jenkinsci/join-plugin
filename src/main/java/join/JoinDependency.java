@@ -16,7 +16,7 @@ import java.util.logging.Logger;
 /**
 * @author wolfs
 */
-class JoinDependency<DEP extends DependencyGraph.Dependency> extends DependencyGraph.Dependency {
+public class JoinDependency<DEP extends DependencyGraph.Dependency> extends DependencyGraph.Dependency {
     private static final Logger LOGGER = Logger.getLogger(JoinDependency.class.getName());
 
     private AbstractProject<?,?> splitProject;
@@ -25,6 +25,14 @@ class JoinDependency<DEP extends DependencyGraph.Dependency> extends DependencyG
     JoinDependency(AbstractProject<?, ?> upstream, AbstractProject<?, ?> downstream, AbstractProject<?, ?> splitProject) {
         super(upstream, downstream);
         this.splitProject = splitProject;
+    }
+
+    /**
+     * @return true if this JoinDependency and the one passed as argument share a common ancestor split project, i.e.
+     * both dependencies where introduces in DependencyGraph from the same job
+     */
+    public boolean fromSameSplitProject(JoinDependency<?> other) {
+        return this.splitProject.equals(other.splitProject);
     }
 
     @Override
