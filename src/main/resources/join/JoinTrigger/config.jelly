@@ -1,8 +1,13 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <j:if test="${descriptor.showEvenIfUnstableOption(targetType)}">
-    <f:entry title="" help="/plugin/join/help/evenUnstable.html">
-      <f:checkbox id="buildTrigger.evenIfDownstreamUnstable" name="buildTrigger.evenIfDownstreamUnstable" checked="${instance.evenIfDownstreamUnstable}" />
-      <label class="attach-previous">${%Trigger even if some downstream projects are unstable}</label>
+  <j:if test="${descriptor.showResultThresholdOption(targetType)}">
+    <f:entry title="" help="/plugin/join/help/resultThreshold.html" field="buildTrigger.resultThreshold">
+		<select class="setting-input" name="buildTrigger.resultThreshold">
+			<f:option value="SUCCESS" selected="${instance.resultThreshold.toString()=='SUCCESS'}">SUCCESS</f:option>
+			<f:option value="UNSTABLE" selected="${instance.resultThreshold.toString()=='UNSTABLE'}">UNSTABLE</f:option>
+			<f:option value="FAILURE" selected="${instance.resultThreshold.toString()=='FAILURE'}">FAILURE</f:option>
+			<f:option value="ABORTED" selected="${instance.resultThreshold.toString()=='ABORTED'}">ABORTED</f:option>
+		</select>
+      <label class="attach-previous">${%Trigger even if some downstream projects have results}</label>
     </f:entry>
   </j:if>
   <f:entry title="${%Projects to build once, after all downstream projects have finished}"

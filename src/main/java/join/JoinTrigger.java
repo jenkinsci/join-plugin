@@ -35,6 +35,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.BuildListener;
+import hudson.model.Result;
 import hudson.model.Cause;
 import hudson.model.Cause.UpstreamCause;
 import hudson.model.CauseAction;
@@ -90,15 +91,15 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     private DescribableList<Publisher,Descriptor<Publisher>> joinPublishers =
         new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
 
-    private boolean evenIfDownstreamUnstable;
+    private Result resultThreshold;
 
     public JoinTrigger() {
-        this(new DescribableList<Publisher, Descriptor<Publisher>>(Saveable.NOOP), "", false);
+        this(new DescribableList<Publisher, Descriptor<Publisher>>(Saveable.NOOP), "", "SUCCESS");
     }
 
-    public JoinTrigger(DescribableList<Publisher,Descriptor<Publisher>> publishers,String string, boolean b) {
+    public JoinTrigger(DescribableList<Publisher,Descriptor<Publisher>> publishers,String string, String result) {
         this.joinProjects = string;
-        this.evenIfDownstreamUnstable = b;
+        this.resultThreshold = Result.fromString(result);
         this.joinPublishers = publishers;
     }
 
@@ -143,7 +144,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
             for (AbstractProject<?,?> joinProject : getJoinProjects(owner.getParent())) {
                 JoinTriggerDependency dependency =
-                        new JoinTriggerDependency(downstreamProject, joinProject, owner, evenIfDownstreamUnstable);
+                        new JoinTriggerDependency(downstreamProject, joinProject, owner, resultThreshold);
                 graph.addDependency(dependency);
             }
         }
@@ -340,7 +341,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             String joinProjectsValue = reformatJoinProjectsValue(formData.getString("joinProjectsValue"));
             return new JoinTrigger(publishers,
                     joinProjectsValue,
-                formData.has("evenIfDownstreamUnstable") && formData.getBoolean("evenIfDownstreamUnstable"));
+                    formData.getString("resultThreshold"));
         }
 
         public String reformatJoinProjectsValue(String joinProjectsValue) {
@@ -374,7 +375,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             return true;
         }
 
-        public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
+        public boolean showResultThresholdOption(Class<? extends AbstractProject> jobType) {
             if(jobType == null) {
                 return true;
             }
@@ -551,8 +552,8 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return joinPublishers;
     }
 
-    public boolean getEvenIfDownstreamUnstable() {
-        return this.evenIfDownstreamUnstable;
+    public Result getResultThreshold() {
+        return this.resultThreshold;
     }
 
     private Object readResolve() {
