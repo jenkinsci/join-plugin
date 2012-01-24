@@ -29,7 +29,7 @@ public class JoinAction implements Action {
     private List<String> consideredBuilds;
     private transient String joinProjects;
     private DescribableList<Publisher, Descriptor<Publisher>> joinPublishers;
-    private boolean evenIfDownstreamUnstable;
+    private Result resultThreshold;
     private Result overallResult;
 
     public JoinAction(JoinTrigger joinTrigger, List<AbstractProject<?,?>> downstream) {
@@ -41,7 +41,7 @@ public class JoinAction implements Action {
         }
         this.joinProjects = joinTrigger.getJoinProjectsValue();
         this.joinPublishers = joinTrigger.getJoinPublishers();
-        this.evenIfDownstreamUnstable = joinTrigger.getEvenIfDownstreamUnstable();
+        this.resultThreshold = joinTrigger.getResultThreshold();
         this.completedDownstreamProjects = new LinkedList<String>();
         this.consideredBuilds = new LinkedList<String>();
         this.overallResult = Result.SUCCESS;
@@ -82,8 +82,7 @@ public class JoinAction implements Action {
     public synchronized void checkPendingDownstream(AbstractBuild<?,?> owner, TaskListener listener) {
         if(pendingDownstreamProjects.isEmpty()) {
             listener.getLogger().println("All downstream projects complete!");
-            Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
-            if(this.overallResult.isWorseThan(threshold)) {
+            if(this.overallResult.isWorseThan(this.resultThreshold)) {
                 listener.getLogger().println("Minimum result threshold not met for join project");
             } else {
                 // Construct a launcher since CopyArchiver wants to get the

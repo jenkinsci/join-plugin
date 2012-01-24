@@ -8,17 +8,16 @@ import hudson.model.Result;
 * @author wolfs
 */
 class JoinTriggerDependency extends JoinDependency<DependencyGraph.Dependency> {
-    boolean evenIfDownstreamUnstable;
-    JoinTriggerDependency(AbstractProject<?, ?> upstream, AbstractProject<?, ?> downstream, AbstractProject<?, ?> splitProject, boolean evenIfDownstreamUnstable) {
+    Result resultThreshold;
+    JoinTriggerDependency(AbstractProject<?, ?> upstream, AbstractProject<?, ?> downstream, AbstractProject<?, ?> splitProject, Result resultThreshold) {
         super(upstream, downstream, splitProject);
-        this.evenIfDownstreamUnstable = evenIfDownstreamUnstable;
+        this.resultThreshold = resultThreshold;
         splitDependency = new DependencyGraph.Dependency(splitProject, downstream);
     }
 
     @Override
     protected boolean conditionIsMet(Result overallResult) {
-        Result threshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
-        return overallResult.isBetterOrEqualTo(threshold);
+        return overallResult.isBetterOrEqualTo(this.resultThreshold);
     }
 
     @Override
@@ -33,7 +32,7 @@ class JoinTriggerDependency extends JoinDependency<DependencyGraph.Dependency> {
             return false;
         }
         final JoinTriggerDependency other = (JoinTriggerDependency) obj;
-        if (this.evenIfDownstreamUnstable != other.evenIfDownstreamUnstable) {
+        if (this.resultThreshold != other.resultThreshold) {
             return false;
         }
         return true;
@@ -43,7 +42,7 @@ class JoinTriggerDependency extends JoinDependency<DependencyGraph.Dependency> {
     public int hashCode() {
         int hash = 3;
         hash = 71 * hash + super.hashCode();
-        hash = 71 * hash + (this.evenIfDownstreamUnstable ? 1 : 0);
+        hash = 71 * hash + this.resultThreshold.ordinal;
         return hash;
     }
 }

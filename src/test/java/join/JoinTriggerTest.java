@@ -198,7 +198,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         final JoinTrigger before = new JoinTrigger(
                 new DescribableList<Publisher, Descriptor<Publisher>>(Saveable.NOOP),
                 joinProject.getName(),
-                false);
+                "SUCCESS");
         splitProject.getPublishersList().add(before);
         final WebClient webClient = createWebClient();
         webClient.setThrowExceptionOnFailingAjax(false);
@@ -208,7 +208,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         final JoinTrigger after = splitProject.getPublishersList().get(JoinTrigger.class);
 
         assertEquals(before.getJoinProjectsValue(),after.getJoinProjectsValue());
-        assertEquals(before.getEvenIfDownstreamUnstable(), after.getEvenIfDownstreamUnstable());
+        assertEquals(before.getResultThreshold(), after.getResultThreshold());
         assertEquals(0, after.getJoinPublishers().size());
     }
 
@@ -224,7 +224,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         final JoinTrigger after = splitProject.getPublishersList().get(JoinTrigger.class);
 
         assertEquals(before.getJoinProjectsValue(),after.getJoinProjectsValue());
-        assertEquals(before.getEvenIfDownstreamUnstable(), after.getEvenIfDownstreamUnstable());
+        assertEquals(before.getResultThreshold(), after.getResultThreshold());
         assertEquals(1, after.getJoinPublishers().size());
         final hudson.plugins.parameterizedtrigger.BuildTrigger paramBtBefore = before.getJoinPublishers().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
         final hudson.plugins.parameterizedtrigger.BuildTrigger paramBtAfter = after.getJoinPublishers().get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
