@@ -48,22 +48,22 @@ public class FormValidationTest extends HudsonTestCase {
         createFreeStyleProject("Second");
         JoinTrigger.DescriptorImpl joinTriggerDescriptor = new JoinTrigger.DescriptorImpl();
 
-        String formatted = joinTriggerDescriptor.reformatJoinProjectsValue("");
+        String formatted = joinTriggerDescriptor.reformatJoinProjectsValue(parent, "");
         assertEquals("", formatted);
 
-        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(null);
+        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(parent, null);
         assertEquals("", formatted);
 
-        formatted = joinTriggerDescriptor.reformatJoinProjectsValue("First, Second");
+        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(parent, "First, Second");
         assertEquals("First, Second", formatted);
 
-        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(" ,First,Second,");
+        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(parent, " ,First,Second,");
         assertEquals("First, Second", formatted);
 
-        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(" ,First,,, , ,Second,");
+        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(parent, " ,First,,, , ,Second,");
         assertEquals("First, Second", formatted);
 
-        formatted = joinTriggerDescriptor.reformatJoinProjectsValue("First, Third,Second,");
+        formatted = joinTriggerDescriptor.reformatJoinProjectsValue(parent, "First, Third,Second,");
         assertEquals("First, Second", formatted);
     }
 

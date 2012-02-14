@@ -70,7 +70,7 @@ public class JoinDependency<DEP extends DependencyGraph.Dependency> extends Depe
                 Cause.UpstreamCause uc = (Cause.UpstreamCause) cause;
                 final int upstreamBuildNum = uc.getUpstreamBuild();
                 final String upstreamProject = uc.getUpstreamProject();
-                if (splitProject.getName().equals(upstreamProject)) {
+                if (splitProject.getFullName().equals(upstreamProject)) {
                     final Run<?,?> upstreamRun = splitProject.getBuildByNumber(upstreamBuildNum);
                     if (upstreamRun instanceof AbstractBuild<?,?>) {
                         splitBuild = (AbstractBuild<?,?>) upstreamRun;
