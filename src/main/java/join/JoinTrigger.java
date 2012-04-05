@@ -31,23 +31,8 @@ import hudson.Util;
 import hudson.matrix.MatrixAggregatable;
 import hudson.matrix.MatrixAggregator;
 import hudson.matrix.MatrixBuild;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.AutoCompletionCandidates;
-import hudson.model.BuildListener;
-import hudson.model.Cause;
+import hudson.model.*;
 import hudson.model.Cause.UpstreamCause;
-import hudson.model.CauseAction;
-import hudson.model.DependecyDeclarer;
-import hudson.model.DependencyGraph;
-import hudson.model.Descriptor;
-import hudson.model.Hudson;
-import hudson.model.Item;
-import hudson.model.Items;
-import hudson.model.Project;
-import hudson.model.Run;
-import hudson.model.Saveable;
-import hudson.model.TaskListener;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
 import hudson.plugins.downstream_ext.DownstreamTrigger;
@@ -64,10 +49,12 @@ import join.JoinAction.JoinCause;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -114,7 +101,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return true;
     }
 
-    @Override
+    // @Override
     public void buildDependencyGraph(AbstractProject owner, DependencyGraph graph) {
         if (!canDeclare(owner)) {
             return;
@@ -129,14 +116,14 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
         for (AbstractProject<?,?> downstreamProject: downstreamProjects) {
             for (BuildTriggerConfig config : getBuildTriggerConfigs(joinPublishers)) {
-                for (AbstractProject<?,?> joinProject : config.getProjectList(null)) {
+                for (AbstractProject<?,?> joinProject : config.getProjectList(owner.getParent(), null)) {
                     ParameterizedJoinDependency dependency =
                             new ParameterizedJoinDependency(downstreamProject, joinProject, owner, config);
                     graph.addDependency(dependency);
                 }
             }
 
-            for (AbstractProject<?,?> joinProject : getJoinProjects()) {
+            for (AbstractProject<?,?> joinProject : getJoinProjects(owner)) {
                 JoinTriggerDependency dependency =
                         new JoinTriggerDependency(downstreamProject, joinProject, owner, evenIfDownstreamUnstable);
                 graph.addDependency(dependency);
@@ -154,7 +141,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         }
 
         for (AbstractProject<?,?> project :
-                getParameterizedDownstreamProjects(build.getProject().getPublishersList(), env)) {
+                getParameterizedDownstreamProjects(build.getProject(), build.getProject().getPublishersList(), env)) {
             if (!project.isDisabled()) {
                 ret.add(project.getName());
             }
@@ -163,12 +150,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     }
 
     private List<AbstractProject<?,?>> getParameterizedDownstreamProjects(
-            DescribableList<Publisher,Descriptor<Publisher>> publishers, EnvVars env) {
+            AbstractProject<?, ?> project, DescribableList<Publisher, Descriptor<Publisher>> publishers, EnvVars env) {
         List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
         for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config :
                 getBuildTriggerConfigs(publishers)) {
-            for (AbstractProject<?,?> project : config.getProjectList(env)) {
-                ret.add(project);
+            for (AbstractProject<?,?> p : config.getProjectList(project.getParent(), env)) {
+                ret.add(p);
             }
         }
         return ret;
@@ -191,15 +178,15 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     }
 
     private List<AbstractProject<?,?>> getDownstreamExtDownstream(
-            DescribableList<Publisher,Descriptor<Publisher>> publishers) {
+            AbstractProject<?, ?> project, DescribableList<Publisher, Descriptor<Publisher>> publishers) {
         List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?, ?>>();
         Plugin extDownstream = Hudson.getInstance().getPlugin("downstream-ext");
         if (extDownstream != null) {
             DownstreamTrigger buildTrigger =
                 publishers.get(DownstreamTrigger.class);
             if (buildTrigger != null) {
-                for (AbstractProject<?,?> project : buildTrigger.getChildProjects()) {
-                    ret.add(project);
+                for (AbstractProject<?,?> p : buildTrigger.getChildProjects(project.getParent())) {
+                    ret.add(p);
                 }
             }
         }
@@ -214,8 +201,8 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project, EnvVars env) {
         List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
-        downstream.addAll(getParameterizedDownstreamProjects(project.getPublishersList(), env));
-        downstream.addAll(getDownstreamExtDownstream(project.getPublishersList()));
+        downstream.addAll(getParameterizedDownstreamProjects(project, project.getPublishersList(), env));
+        downstream.addAll(getDownstreamExtDownstream(project, project.getPublishersList()));
         return downstream;
     }
 
@@ -223,14 +210,14 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
         BuildTrigger buildTrigger = project.getPublishersList().get(BuildTrigger.class);
         if (buildTrigger != null) {
-            for (AbstractProject<?,?> childProject : buildTrigger.getChildProjects()) {
+            for (AbstractProject<?,?> childProject : buildTrigger.getChildProjects(project.getParent())) {
                 ret.add(childProject);
             }
         }
         return ret;
     }
 
-    @Override
+    // @Override
     public MatrixAggregator createAggregator(MatrixBuild build, Launcher launcher, BuildListener listener) {
         return new MatrixAggregator(build, launcher, listener) {
             @Override
@@ -273,7 +260,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
                 new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP, newList);
 
             LOGGER.finer("Parsed " + publishers.size() + " publishers");
-
+                    
             // Remove trailing "," inserted by YUI autocompletion
             String joinProjectsValue = reformatJoinProjectsValue(formData.getString("joinProjectsValue"));
             return new JoinTrigger(publishers,
@@ -282,18 +269,21 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         }
 
         public String reformatJoinProjectsValue(String joinProjectsValue) {
+            ItemGroup parent = Stapler.getCurrentRequest().findAncestorObject(ItemGroup.class);
+            if (parent == null) parent = Hudson.getInstance();
+
             String[] tokens = Util.fixNull(joinProjectsValue).split(",");
-            List<AbstractProject<?, ?>> abstractProjects = new ArrayList<AbstractProject<?, ?>>();
+            List<String> s = new ArrayList<String>();
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    Item item = parent.getItem(projectName);
                     if (item instanceof AbstractProject) {
-                        abstractProjects.add((AbstractProject<?, ?>) item);
+                        s.add(item.getName());
                     }
                 }
             }
-            return Items.toNameList(abstractProjects);
+            return StringUtils.join(s, ",");
         }
 
         private void extractAndAddPublisher(JSONObject json, List<Descriptor<Publisher>> applicableDescriptors, List<Publisher> newList, StaplerRequest req) throws FormException {
@@ -336,11 +326,14 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
          * Form validation method.
          */
         public FormValidation doCheckJoinProjectsValue(@QueryParameter String value ) {
+            ItemGroup parent = Stapler.getCurrentRequest().findAncestorObject(ItemGroup.class);
+            if (parent == null) parent = Hudson.getInstance();
+
             String[] tokens = Util.fixNull(value).split(",");
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    Item item = parent.getItem(projectName);
                     if(item==null) {
                         return FormValidation.error("No such project");
                     }
@@ -355,14 +348,19 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
         public AutoCompletionCandidates doAutoCompleteJoinProjectsValue(@QueryParameter String value) {
             String prefix = Util.fixNull(value);
-            List<AbstractProject> projects = Hudson.getInstance().getItems(AbstractProject.class);
+            ItemGroup parent = Stapler.getCurrentRequest().findAncestorObject(ItemGroup.class);
+            if (parent == null) parent = Hudson.getInstance();
+
+            Collection<Item> projects = parent.getItems();
             List<String> candidates = new ArrayList<String>();
             List<String> lowPrioCandidates = new ArrayList<String>();
-            for (AbstractProject project : projects) {
-                if (project.getFullName().startsWith(prefix)) {
-                    candidates.add(project.getFullName());
-                } else if (project.getFullName().toLowerCase().startsWith(prefix.toLowerCase())) {
-                    lowPrioCandidates.add(project.getFullName());
+            for (Item item : projects) {
+                if (!(item instanceof AbstractProject)) continue;
+                AbstractProject project = (AbstractProject) item;
+                if (project.getName().startsWith(prefix)) {
+                    candidates.add(project.getName());
+                } else if (project.getName().toLowerCase().startsWith(prefix.toLowerCase())) {
+                    lowPrioCandidates.add(project.getName());
                 }
             }
             AutoCompletionCandidates autoCand = new AutoCompletionCandidates();
@@ -401,7 +399,8 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
             private void notifyJob(AbstractBuild<?,?> abstractBuild, TaskListener listener, String upstreamProjectName,
                     int upstreamJobNumber) {
-                List<AbstractProject> upstreamList = Items.fromNameList(upstreamProjectName,AbstractProject.class);
+                ItemGroup itemGroup = abstractBuild.getProject().getParent();
+                List<AbstractProject> upstreamList = Items.fromNameList(itemGroup, upstreamProjectName, AbstractProject.class);
                 if(upstreamList.size() != 1) {
                     listener.getLogger().println("Join notifier cannot find upstream project: " + upstreamProjectName);
                     return;
@@ -470,12 +469,17 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return joinProjects;
     }
 
+    @Deprecated
     public List<AbstractProject> getJoinProjects() {
+        return getJoinProjects(null);
+    }
+
+    public List<AbstractProject> getJoinProjects(AbstractProject<?,?> owner) {
         List<AbstractProject> list;
         if (joinProjects == null) {
             list = new ArrayList<AbstractProject>();
         } else {
-            list = Items.fromNameList(joinProjects, AbstractProject.class);
+            list = Items.fromNameList(owner == null ? null : owner.getParent(), joinProjects, AbstractProject.class);
         }
         return list;
     }

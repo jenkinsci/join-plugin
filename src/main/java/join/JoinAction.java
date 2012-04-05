@@ -102,7 +102,7 @@ public class JoinAction implements Action {
                 }
                 if (!JoinTrigger.canDeclare(owner.getProject())) {
                     List<AbstractProject> projects =
-                        Items.fromNameList(joinProjects, AbstractProject.class);
+                        Items.fromNameList(owner.getProject().getParent(), joinProjects, AbstractProject.class);
                     for(AbstractProject project : projects) {
                         listener.getLogger().println("Scheduling join project: " + project.getName());
                         project.scheduleBuild(new JoinCause(owner));
