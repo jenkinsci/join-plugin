@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>1.400</version>
+    <version>1.424</version>
   </parent>
 
   <artifactId>join</artifactId>
@@ -68,8 +68,8 @@
 
   <repositories>
       <repository>
-          <id>jenkins-ci</id>
-          <url>http://maven.jenkins-ci.org/content/repositories/releases</url>
+          <id>repo.jenkins-ci.org</id>
+          <url>http://repo.jenkins-ci.org/public/</url>
       </repository>
   </repositories>
 

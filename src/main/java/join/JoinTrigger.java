@@ -43,6 +43,7 @@ import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
 import hudson.model.Item;
+import hudson.model.ItemGroup;
 import hudson.model.Items;
 import hudson.model.Project;
 import hudson.model.Run;
@@ -63,6 +64,7 @@ import hudson.util.FormValidation;
 import join.JoinAction.JoinCause;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -116,9 +118,6 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     @Override
     public void buildDependencyGraph(AbstractProject owner, DependencyGraph graph) {
-        if (!canDeclare(owner)) {
-            return;
-        }
 
         final List<AbstractProject<?,?>> downstreamProjects = getAllDownstream(owner, null);
         // If there is no intermediate project add the split project and use it as
@@ -136,7 +135,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
                 }
             }
 
-            for (AbstractProject<?,?> joinProject : getJoinProjects()) {
+            for (AbstractProject<?,?> joinProject : getJoinProjects(owner.getParent())) {
                 JoinTriggerDependency dependency =
                         new JoinTriggerDependency(downstreamProject, joinProject, owner, evenIfDownstreamUnstable);
                 graph.addDependency(dependency);
@@ -208,7 +207,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     static boolean canDeclare(AbstractProject<?,?> owner) {
             // Inner class added in Hudson 1.341
-            return DependencyGraph.class.getClasses().length > 0;
+            return true;
     }
 
 
@@ -283,17 +282,17 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
         public String reformatJoinProjectsValue(String joinProjectsValue) {
             String[] tokens = Util.fixNull(joinProjectsValue).split(",");
-            List<AbstractProject<?, ?>> abstractProjects = new ArrayList<AbstractProject<?, ?>>();
+            List<String> verified = new ArrayList<String>();
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
-                    if (item instanceof AbstractProject) {
-                        abstractProjects.add((AbstractProject<?, ?>) item);
-                    }
+                    // can't really test the validity of the value since we don't know the current context ItemParent
+                    // Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    verified.add(projectName);
                 }
+
             }
-            return Items.toNameList(abstractProjects);
+            return Util.join(verified,", ");
         }
 
         private void extractAndAddPublisher(JSONObject json, List<Descriptor<Publisher>> applicableDescriptors, List<Publisher> newList, StaplerRequest req) throws FormException {
@@ -335,17 +334,17 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         /**
          * Form validation method.
          */
-        public FormValidation doCheckJoinProjectsValue(@QueryParameter String value ) {
+        public FormValidation doCheckJoinProjectsValue(@AncestorInPath AbstractProject context, @QueryParameter String value) {
             String[] tokens = Util.fixNull(value).split(",");
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    Item item = Hudson.getInstance().getItem(projectName,context,Item.class);
                     if(item==null) {
-                        return FormValidation.error("No such project");
+                        return FormValidation.error("No such project: "+projectName);
                     }
                     if(!(item instanceof AbstractProject)) {
-                        return FormValidation.error("Not buildable");
+                        return FormValidation.error("Not buildable: "+projectName);
                     }
                 }
             }
@@ -401,7 +400,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
             private void notifyJob(AbstractBuild<?,?> abstractBuild, TaskListener listener, String upstreamProjectName,
                     int upstreamJobNumber) {
-                List<AbstractProject> upstreamList = Items.fromNameList(upstreamProjectName,AbstractProject.class);
+                List<AbstractProject> upstreamList = Items.fromNameList(abstractBuild.getProject().getParent(), upstreamProjectName,AbstractProject.class);
                 if(upstreamList.size() != 1) {
                     listener.getLogger().println("Join notifier cannot find upstream project: " + upstreamProjectName);
                     return;
@@ -470,12 +469,19 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return joinProjects;
     }
 
+    /**
+     * @deprecated as of 1.14
+     */
     public List<AbstractProject> getJoinProjects() {
+        return getJoinProjects(null);
+    }
+
+    public List<AbstractProject> getJoinProjects(ItemGroup context) {
         List<AbstractProject> list;
         if (joinProjects == null) {
             list = new ArrayList<AbstractProject>();
         } else {
-            list = Items.fromNameList(joinProjects, AbstractProject.class);
+            list = Items.fromNameList(context, joinProjects, AbstractProject.class);
         }
         return list;
     }

@@ -100,14 +100,6 @@ public class JoinAction implements Action {
                         listener.getLogger().print(e.toString());
                     }
                 }
-                if (!JoinTrigger.canDeclare(owner.getProject())) {
-                    List<AbstractProject> projects =
-                        Items.fromNameList(joinProjects, AbstractProject.class);
-                    for(AbstractProject project : projects) {
-                        listener.getLogger().println("Scheduling join project: " + project.getName());
-                        project.scheduleBuild(new JoinCause(owner));
-                    }
-                }
             }
         } else {
             listener.getLogger().println("Project " + owner.getProject().getName() + " still waiting for " + pendingDownstreamProjects.size() + " builds to complete");

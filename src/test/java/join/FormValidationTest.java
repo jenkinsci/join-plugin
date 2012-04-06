@@ -1,5 +1,6 @@
 package join;
 
+import hudson.model.FreeStyleProject;
 import hudson.util.FormValidation;
 import org.jvnet.hudson.test.HudsonTestCase;
 
@@ -11,35 +12,35 @@ import java.io.IOException;
 public class FormValidationTest extends HudsonTestCase {
 
     public void testBasicValidation() throws IOException {
-        createFreeStyleProject("First");
-        createFreeStyleProject("Second");
+        FreeStyleProject first = createFreeStyleProject("First");
+        FreeStyleProject second = createFreeStyleProject("Second");
         JoinTrigger.DescriptorImpl joinTriggerDescriptor = new JoinTrigger.DescriptorImpl();
 
-        FormValidation formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("");
+        FormValidation formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(null);
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,null);
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("First, Second");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"First, Second");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("First, Second, ");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"First, Second, ");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("First, Second,");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"First, Second,");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("First, ,Second,");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"First, ,Second,");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(" ,First,Second,");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first," ,First,Second,");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("   First,Second,");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"   First,Second,");
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
 
-        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue("First, Third,Second,");
+        formValidation = joinTriggerDescriptor.doCheckJoinProjectsValue(first,"First, Third,Second,");
         assertEquals(FormValidation.Kind.ERROR, formValidation.kind);
     }
 
@@ -64,7 +65,7 @@ public class FormValidationTest extends HudsonTestCase {
         assertEquals("First, Second", formatted);
 
         formatted = joinTriggerDescriptor.reformatJoinProjectsValue("First, Third,Second,");
-        assertEquals("First, Second", formatted);
+        assertEquals("First, Third, Second", formatted);
     }
 
 }
