@@ -45,11 +45,12 @@ import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
+import jenkins.model.Jenkins;
 import join.JoinAction.JoinCause;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
@@ -101,7 +102,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return true;
     }
 
-    // @Override
+    @Override
     public void buildDependencyGraph(AbstractProject owner, DependencyGraph graph) {
         if (!canDeclare(owner)) {
             return;
@@ -217,7 +218,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return ret;
     }
 
-    // @Override
+    @Override
     public MatrixAggregator createAggregator(MatrixBuild build, Launcher launcher, BuildListener listener) {
         return new MatrixAggregator(build, launcher, listener) {
             @Override
@@ -269,18 +270,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         }
 
         public String reformatJoinProjectsValue(String joinProjectsValue) {
-            ItemGroup parent = Stapler.getCurrentRequest().findAncestorObject(ItemGroup.class);
-            if (parent == null) parent = Hudson.getInstance();
-
             String[] tokens = Util.fixNull(joinProjectsValue).split(",");
             List<String> s = new ArrayList<String>();
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = parent.getItem(projectName);
-                    if (item instanceof AbstractProject) {
-                        s.add(item.getName());
-                    }
+                    s.add(projectName);
                 }
             }
             return StringUtils.join(s, ",");
@@ -325,15 +320,14 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         /**
          * Form validation method.
          */
-        public FormValidation doCheckJoinProjectsValue(@QueryParameter String value ) {
-            ItemGroup parent = Stapler.getCurrentRequest().findAncestorObject(ItemGroup.class);
-            if (parent == null) parent = Hudson.getInstance();
-
+        public FormValidation doCheckJoinProjectsValue(@QueryParameter String value,
+                                                       @AncestorInPath ItemGroup context) {
+            Jenkins j = Jenkins.getInstance();
             String[] tokens = Util.fixNull(value).split(",");
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = parent.getItem(projectName);
+                    Item item = j.getItem(projectName, context);
                     if(item==null) {
                         return FormValidation.error("No such project");
                     }
@@ -346,12 +340,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             return FormValidation.ok();
         }
 
-        public AutoCompletionCandidates doAutoCompleteJoinProjectsValue(@QueryParameter String value) {
+        public AutoCompletionCandidates doAutoCompleteJoinProjectsValue(@QueryParameter String value,
+                                                                        @AncestorInPath ItemGroup context) {
+            Jenkins j = Jenkins.getInstance();
             String prefix = Util.fixNull(value);
-            ItemGroup parent = Stapler.getCurrentRequest().findAncestorObject(ItemGroup.class);
-            if (parent == null) parent = Hudson.getInstance();
 
-            Collection<Item> projects = parent.getItems();
+            Collection<Item> projects = context.getItems();
             List<String> candidates = new ArrayList<String>();
             List<String> lowPrioCandidates = new ArrayList<String>();
             for (Item item : projects) {
