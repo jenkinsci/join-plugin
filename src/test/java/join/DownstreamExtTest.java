@@ -47,7 +47,7 @@ public class DownstreamExtTest extends BasicJoinPluginTest {
 
     private void addDownstreamExtTrigger(FreeStyleProject intermediateProject) throws IOException {
         splitProject.getPublishersList().add(new DownstreamTrigger(intermediateProject.getName(),
-                Result.SUCCESS, false, DownstreamTrigger.Strategy.AND_LOWER, null));
+                Result.SUCCESS, false, false, DownstreamTrigger.Strategy.AND_LOWER, null));
     }
 
 }

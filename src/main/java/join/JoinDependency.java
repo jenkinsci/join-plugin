@@ -59,7 +59,7 @@ public class JoinDependency<DEP extends DependencyGraph.Dependency> extends Depe
         final List<Cause> causes = build.getCauses();
         AbstractBuild<?,?> splitBuild = null;
         // If there is no intermediate project this will happen
-        if (splitProject.getName().equals(build.getProject().getName())) {
+        if (splitProject.getFullName().equals(build.getProject().getFullName())) {
             splitBuild = build;
         }
         for (Cause cause : causes) {
@@ -70,7 +70,7 @@ public class JoinDependency<DEP extends DependencyGraph.Dependency> extends Depe
                 Cause.UpstreamCause uc = (Cause.UpstreamCause) cause;
                 final int upstreamBuildNum = uc.getUpstreamBuild();
                 final String upstreamProject = uc.getUpstreamProject();
-                if (splitProject.getName().equals(upstreamProject)) {
+                if (splitProject.getFullName().equals(upstreamProject)) {
                     final Run<?,?> upstreamRun = splitProject.getBuildByNumber(upstreamBuildNum);
                     if (upstreamRun instanceof AbstractBuild<?,?>) {
                         splitBuild = (AbstractBuild<?,?>) upstreamRun;

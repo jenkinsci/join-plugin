@@ -128,7 +128,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
         for (AbstractProject<?,?> downstreamProject: downstreamProjects) {
             for (BuildTriggerConfig config : getBuildTriggerConfigs(joinPublishers)) {
-                for (AbstractProject<?,?> joinProject : config.getProjectList(null)) {
+                for (AbstractProject<?,?> joinProject : config.getProjectList(owner.getParent(), null)) {
                     ParameterizedJoinDependency dependency =
                             new ParameterizedJoinDependency(downstreamProject, joinProject, owner, config);
                     graph.addDependency(dependency);
@@ -153,7 +153,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         }
 
         for (AbstractProject<?,?> project :
-                getParameterizedDownstreamProjects(build.getProject().getPublishersList(), env)) {
+                getParameterizedDownstreamProjects(build.getProject().getParent(), build.getProject().getPublishersList(), env)) {
             if (!project.isDisabled()) {
                 ret.add(project.getName());
             }
@@ -162,11 +162,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     }
 
     private List<AbstractProject<?,?>> getParameterizedDownstreamProjects(
+            ItemGroup context,
             DescribableList<Publisher,Descriptor<Publisher>> publishers, EnvVars env) {
         List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
         for(hudson.plugins.parameterizedtrigger.BuildTriggerConfig config :
                 getBuildTriggerConfigs(publishers)) {
-            for (AbstractProject<?,?> project : config.getProjectList(env)) {
+            for (AbstractProject<?,?> project : config.getProjectList(context, env)) {
                 ret.add(project);
             }
         }
@@ -190,6 +191,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     }
 
     private List<AbstractProject<?,?>> getDownstreamExtDownstream(
+            ItemGroup context,
             DescribableList<Publisher,Descriptor<Publisher>> publishers) {
         List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?, ?>>();
         Plugin extDownstream = Hudson.getInstance().getPlugin("downstream-ext");
@@ -197,7 +199,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             DownstreamTrigger buildTrigger =
                 publishers.get(DownstreamTrigger.class);
             if (buildTrigger != null) {
-                for (AbstractProject<?,?> project : buildTrigger.getChildProjects()) {
+                for (AbstractProject<?,?> project : buildTrigger.getChildProjects(context)) {
                     ret.add(project);
                 }
             }
@@ -213,8 +215,8 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project, EnvVars env) {
         List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
-        downstream.addAll(getParameterizedDownstreamProjects(project.getPublishersList(), env));
-        downstream.addAll(getDownstreamExtDownstream(project.getPublishersList()));
+        downstream.addAll(getParameterizedDownstreamProjects(project.getParent(), project.getPublishersList(), env));
+        downstream.addAll(getDownstreamExtDownstream(project.getParent(), project.getPublishersList()));
         return downstream;
     }
 

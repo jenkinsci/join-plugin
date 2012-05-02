@@ -36,7 +36,7 @@ public class JoinAction implements Action {
         this.pendingDownstreamProjects = new LinkedList<String>();
         for(AbstractProject<?,?> project : downstream) {
             if(!project.isDisabled()) {
-                this.pendingDownstreamProjects.add(project.getName());
+                this.pendingDownstreamProjects.add(project.getFullName());
             }
         }
         this.joinProjects = joinTrigger.getJoinProjectsValue();
@@ -63,7 +63,7 @@ public class JoinAction implements Action {
     public synchronized boolean downstreamFinished(AbstractBuild<?,?> upstreamBuild, AbstractBuild<?,?> finishedBuild, TaskListener listener) {
         if (!consideredBuilds.contains(finishedBuild.toString())) {
             consideredBuilds.add(finishedBuild.toString());
-            String finishedBuildProjectName = finishedBuild.getProject().getName();
+            String finishedBuildProjectName = finishedBuild.getProject().getFullName();
             if(pendingDownstreamProjects.remove(finishedBuildProjectName)) {
                 this.overallResult = this.overallResult.combine(finishedBuild.getResult());
                 completedDownstreamProjects.add(finishedBuildProjectName);
@@ -102,7 +102,7 @@ public class JoinAction implements Action {
                 }
             }
         } else {
-            listener.getLogger().println("Project " + owner.getProject().getName() + " still waiting for " + pendingDownstreamProjects.size() + " builds to complete");
+            listener.getLogger().println("Project " + owner.getProject().getName() + " still waiting for " + pendingDownstreamProjects.toString() + " builds to complete");
         }
     }
 
