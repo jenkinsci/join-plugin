@@ -71,6 +71,11 @@ public class JoinAction implements Action {
             } else {
                 listener.getLogger().println("[Join] Pending does not contain " + finishedBuildProjectName);
             }
+            try {
+                upstreamBuild.save();
+            } catch (java.io.IOException e) {
+                listener.getLogger().printf("Unable to save upstream build.");
+            }
         }
         return pendingDownstreamProjects.isEmpty();
     }
