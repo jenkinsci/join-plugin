@@ -225,7 +225,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
         BuildTrigger buildTrigger = project.getPublishersList().get(BuildTrigger.class);
         if (buildTrigger != null) {
-            for (AbstractProject<?,?> childProject : buildTrigger.getChildProjects()) {
+            for (AbstractProject<?,?> childProject : buildTrigger.getChildProjects(project.getParent())) {
                 ret.add(childProject);
             }
         }
