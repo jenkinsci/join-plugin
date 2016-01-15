@@ -91,10 +91,7 @@ public class JoinAction implements Action {
             if(this.overallResult.isWorseThan(threshold)) {
                 listener.getLogger().println("Minimum result threshold not met for join project");
             } else {
-                // Construct a launcher since CopyArchiver wants to get the
-                // channel from it. We use the channel of the node where the
-                // splitProject was built on.
-                final Launcher launcher = new NoopLauncher(listener, owner);
+                final Launcher launcher = null;
 
                 for(Publisher pub : this.joinPublishers) {
                     try {
@@ -118,28 +115,4 @@ public class JoinAction implements Action {
         }
 
     }
-
-    private static class NoopLauncher extends Launcher {
-
-        public NoopLauncher(TaskListener listener, AbstractBuild<?,?> build) {
-            super(listener, build.getBuiltOn().getChannel());
-        }
-
-        @Override
-        public Proc launch(ProcStarter starter) throws IOException {
-            throw new UnsupportedOperationException("Not supported.");
-        }
-
-        @Override
-        public Channel launchChannel(String[] cmd, OutputStream out, FilePath workDir, Map<String, String> envVars) throws IOException, InterruptedException {
-            throw new UnsupportedOperationException("Not supported.");
-        }
-
-        @Override
-        public void kill(Map<String, String> modelEnvVars) throws IOException, InterruptedException {
-            throw new UnsupportedOperationException("Not supported.");
-        }
-
-    }
-
 }
