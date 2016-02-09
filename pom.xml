@@ -8,7 +8,7 @@
 
   <artifactId>join</artifactId>
   <packaging>hpi</packaging>
-  <version>1.18-SNAPSHOT</version>
+  <version>1.17-SNAPSHOT</version>
   <name>Join plugin</name>
   <description>Triggering a job after a group of jobs finish</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Join+Plugin</url>
