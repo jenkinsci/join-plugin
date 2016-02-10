@@ -13,6 +13,13 @@
   <description>Triggering a job after a group of jobs finish</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Join+Plugin</url>
 
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+    </license>
+  </licenses>
+
   <developers>
     <developer>
       <id>mdonohue</id>
