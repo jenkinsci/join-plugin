@@ -1,27 +1,21 @@
 package join;
 
-import hudson.FilePath;
 import hudson.Launcher;
-import hudson.Proc;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.Cause.UpstreamCause;
 import hudson.model.Descriptor;
-import hudson.model.Items;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
-import hudson.remoting.Channel;
 import hudson.tasks.Publisher;
 import hudson.util.DescribableList;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 public class JoinAction implements Action {
     private List<String> pendingDownstreamProjects;

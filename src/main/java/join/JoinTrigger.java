@@ -75,6 +75,8 @@ import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import jenkins.model.Jenkins;
+
 @Extension
 public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAggregatable {
     private static final Logger LOGGER = Logger.getLogger(JoinTrigger.class.getName());
@@ -178,7 +180,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     private List<BuildTriggerConfig> getBuildTriggerConfigs(
             DescribableList<Publisher,Descriptor<Publisher>> publishers) {
         List<BuildTriggerConfig> ret = new ArrayList<BuildTriggerConfig>();
-        Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
+        Plugin parameterizedTrigger = Jenkins.getInstance().getPlugin("parameterized-trigger");
         if (parameterizedTrigger != null) {
             hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger =
                 publishers.get(hudson.plugins.parameterizedtrigger.BuildTrigger.class);
@@ -195,7 +197,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             ItemGroup context,
             DescribableList<Publisher,Descriptor<Publisher>> publishers) {
         List<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?, ?>>();
-        Plugin extDownstream = Hudson.getInstance().getPlugin("downstream-ext");
+        Plugin extDownstream = Jenkins.getInstance().getPlugin("downstream-ext");
         if (extDownstream != null) {
             DownstreamTrigger buildTrigger =
                 publishers.get(DownstreamTrigger.class);
@@ -328,9 +330,9 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
         public List<Descriptor<Publisher>> getApplicableDescriptors() {
             ArrayList<Descriptor<Publisher>> list = new ArrayList<Descriptor<Publisher>>();
-            Plugin parameterizedTrigger = Hudson.getInstance().getPlugin("parameterized-trigger");
+            Plugin parameterizedTrigger = Jenkins.getInstance().getPlugin("parameterized-trigger");
             if (parameterizedTrigger != null) {
-                list.add(Hudson.getInstance().getDescriptorByType(hudson.plugins.parameterizedtrigger.BuildTrigger.DescriptorImpl.class));
+                list.add(Jenkins.getInstance().getDescriptorByType(hudson.plugins.parameterizedtrigger.BuildTrigger.DescriptorImpl.class));
             }
             // See issue 4384.  Supporting the mailer here breaks its use as the regular post-build action.
             //list.add(Hudson.getInstance().getDescriptorByType(hudson.tasks.Mailer.DescriptorImpl.class));
@@ -345,7 +347,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             for (String token : tokens) {
                 String projectName = token.trim();
                 if (StringUtils.isNotEmpty(projectName)) {
-                    Item item = Hudson.getInstance().getItem(projectName,context,Item.class);
+                    Item item = Jenkins.getInstance().getItem(projectName,context,Item.class);
                     if(item==null) {
                         return FormValidation.error("No such project: "+projectName);
                     }
@@ -360,7 +362,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
         public AutoCompletionCandidates doAutoCompleteJoinProjectsValue(@QueryParameter String value) {
             String prefix = Util.fixNull(value);
-            List<AbstractProject> projects = Hudson.getInstance().getItems(AbstractProject.class);
+            List<AbstractProject> projects = Jenkins.getInstance().getItems(AbstractProject.class);
             List<String> candidates = new ArrayList<String>();
             List<String> lowPrioCandidates = new ArrayList<String>();
             for (AbstractProject project : projects) {
@@ -443,7 +445,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             public void onRenamed(Item item, String oldName, String newName) {
                 // update BuildTrigger of other projects that point to this object.
                 // can't we generalize this?
-                for( Project<?,?> p : Hudson.getInstance().getProjects() ) {
+                for( Project<?,?> p : Jenkins.getInstance().getProjects() ) {
                     BuildTrigger t = p.getPublishersList().get(BuildTrigger.class);
                     if ((t!=null) && (t.onJobRenamed(oldName,newName))) {
                         try {
