@@ -218,6 +218,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         
         DescribableList<Publisher, Descriptor<Publisher>> publishers = project.getPublishersList();
         List<AbstractProject<?, ?>> ret = new ArrayList<AbstractProject<?, ?>>();
+        Plugin flexiblePublisherPlugin = Jenkins.getInstance().getPlugin("flexible-publish");
+        Plugin parameterizedTrigger = Jenkins.getInstance().getPlugin("parameterized-trigger");
+        
+        if (flexiblePublisherPlugin == null || parameterizedTrigger == null) {
+        	return ret;
+        }
         
         FlexiblePublisher flexiblePublisher = publishers.get(FlexiblePublisher.class);
         
@@ -227,7 +233,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
                 for (BuildStep buildStep : conditionalPublisher.getPublisherList()) {
                     if (buildStep instanceof hudson.plugins.parameterizedtrigger.BuildTrigger) {
                     
-                        ret.addAll(GetProjectFromBuildTriggerConfigs((hudson.plugins.parameterizedtrigger.BuildTrigger)buildStep));
+                        ret.addAll(GetProjectFromBuildTriggerConfigs(buildStep));
                     }
                 }
             }
@@ -237,13 +243,13 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     }
 
     private Collection<? extends AbstractProject<?, ?>> GetProjectFromBuildTriggerConfigs(
-            hudson.plugins.parameterizedtrigger.BuildTrigger buildTrigger) {
+            Object buildTrigger) {
         
         List<AbstractProject<?, ?>> ret = new ArrayList<AbstractProject<?, ?>>();
         
         for (hudson.model.Project p : Hudson.getInstance().getProjects()) {
     
-            for (BuildTriggerConfig config : buildTrigger.getConfigs()) {
+            for (BuildTriggerConfig config : ((hudson.plugins.parameterizedtrigger.BuildTrigger )buildTrigger).getConfigs()) {
                 if (p.getName().equals(config.getProjects())) {
                     ret.add(p);
                 }
