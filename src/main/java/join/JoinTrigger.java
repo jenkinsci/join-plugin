@@ -324,6 +324,9 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         }
 
         public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
+            if(jobType == null) {
+                return true;
+            }
             // UGLY: for promotion process, this option doesn't make sense.
             return !jobType.getName().contains("PromotionProcess");
         }
