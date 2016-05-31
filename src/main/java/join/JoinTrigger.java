@@ -64,12 +64,15 @@ import hudson.util.FormValidation;
 import join.JoinAction.JoinCause;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.jenkins_ci.plugins.flexible_publish.ConditionalPublisher;
+import org.jenkins_ci.plugins.flexible_publish.FlexiblePublisher;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
@@ -210,6 +213,52 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
         return ret;
     }
 
+    private Collection<? extends AbstractProject<?, ?>> getParameterizedDownstreamInFlexiblePublisher(
+        AbstractProject<?, ?> project) {
+        
+        DescribableList<Publisher, Descriptor<Publisher>> publishers = project.getPublishersList();
+        List<AbstractProject<?, ?>> ret = new ArrayList<AbstractProject<?, ?>>();
+        Plugin flexiblePublisherPlugin = Jenkins.getInstance().getPlugin("flexible-publish");
+        Plugin parameterizedTrigger = Jenkins.getInstance().getPlugin("parameterized-trigger");
+        
+        if (flexiblePublisherPlugin == null || parameterizedTrigger == null) {
+        	return ret;
+        }
+        
+        FlexiblePublisher flexiblePublisher = publishers.get(FlexiblePublisher.class);
+        
+        if (flexiblePublisher != null ) {
+        
+            for (ConditionalPublisher conditionalPublisher : flexiblePublisher.getPublishers()) {
+                for (BuildStep buildStep : conditionalPublisher.getPublisherList()) {
+                    if (buildStep instanceof hudson.plugins.parameterizedtrigger.BuildTrigger) {
+                    
+                        ret.addAll(GetProjectFromBuildTriggerConfigs(buildStep));
+                    }
+                }
+            }
+        }
+        
+        return ret;
+    }
+
+    private Collection<? extends AbstractProject<?, ?>> GetProjectFromBuildTriggerConfigs(
+            Object buildTrigger) {
+        
+        List<AbstractProject<?, ?>> ret = new ArrayList<AbstractProject<?, ?>>();
+        
+        for (hudson.model.Project p : Hudson.getInstance().getProjects()) {
+    
+            for (BuildTriggerConfig config : ((hudson.plugins.parameterizedtrigger.BuildTrigger )buildTrigger).getConfigs()) {
+                if (p.getName().equals(config.getProjects())) {
+                    ret.add(p);
+                }
+            }
+        }
+        
+        return ret;
+    }
+
     static boolean canDeclare(AbstractProject<?,?> owner) {
             // Inner class added in Hudson 1.341
             return true;
@@ -218,10 +267,12 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     public List<AbstractProject<?,?>> getAllDownstream(AbstractProject<?,?> project, EnvVars env) {
         List<AbstractProject<?,?>> downstream = getBuildTriggerDownstream(project);
+        downstream.addAll(getParameterizedDownstreamInFlexiblePublisher(project));
         downstream.addAll(getParameterizedDownstreamProjects(project.getParent(), project.getPublishersList(), env));
         downstream.addAll(getDownstreamExtDownstream(project.getParent(), project.getPublishersList()));
         return downstream;
     }
+    
 
     public List<AbstractProject<?,?>> getBuildTriggerDownstream(AbstractProject<?,?> project) {
         ArrayList<AbstractProject<?,?>> ret = new ArrayList<AbstractProject<?,?>>();
