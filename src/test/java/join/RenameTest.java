@@ -34,7 +34,7 @@ public class RenameTest extends BasicJoinPluginTest {
 
     public void testAbsoluteRenamed() throws Exception {
         splitProject.getPublishersList().add(new JoinTrigger(new DescribableList<Publisher, Descriptor<Publisher>>(Saveable.NOOP),
-                "/joinProject", false));
+                "/joinProject", "SUCCESS"));
         joinProject.renameTo("newName");
 
         JoinTrigger t = splitProject.getPublishersList().get(JoinTrigger.class);
