@@ -91,6 +91,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     private DescribableList<Publisher,Descriptor<Publisher>> joinPublishers =
         new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
 
+    private transient boolean evenIfDownstreamUnstable;
     private Result resultThreshold;
 
     public JoinTrigger() {
@@ -559,6 +560,9 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     private Object readResolve() {
         if(this.joinPublishers == null) {
             this.joinPublishers = new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
+        }
+        if(this.resultThreshold == null) {
+            this.resultThreshold = this.evenIfDownstreamUnstable ? Result.UNSTABLE : Result.SUCCESS;
         }
         return this;
     }
