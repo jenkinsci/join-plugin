@@ -17,6 +17,9 @@ class JoinTriggerDependency extends JoinDependency<DependencyGraph.Dependency> {
 
     @Override
     protected boolean conditionIsMet(Result overallResult) {
+        if(overallResult == null || this.resultThreshold == null) {
+            return false;
+        }
         return overallResult.isBetterOrEqualTo(this.resultThreshold);
     }
 
@@ -42,7 +45,9 @@ class JoinTriggerDependency extends JoinDependency<DependencyGraph.Dependency> {
     public int hashCode() {
         int hash = 3;
         hash = 71 * hash + super.hashCode();
-        hash = 71 * hash + this.resultThreshold.ordinal;
+        if(this.resultThreshold != null) {
+            hash = 71 * hash + this.resultThreshold.ordinal + 1;
+        }
         return hash;
     }
 }
