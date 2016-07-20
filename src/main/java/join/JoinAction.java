@@ -16,10 +16,11 @@ import hudson.util.DescribableList;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.HashMap;
 
 public class JoinAction implements Action {
     private List<String> pendingDownstreamProjects;
-    private List<String> completedDownstreamProjects;
+    private HashMap<String, List<Result>> completedDownstreamProjects;
     private List<String> consideredBuilds;
     private transient String joinProjects;
     private DescribableList<Publisher, Descriptor<Publisher>> joinPublishers;
@@ -28,15 +29,16 @@ public class JoinAction implements Action {
 
     public JoinAction(JoinTrigger joinTrigger, List<AbstractProject<?,?>> downstream) {
         this.pendingDownstreamProjects = new LinkedList<String>();
+        this.completedDownstreamProjects = new HashMap<String,List<Result>>();
         for(AbstractProject<?,?> project : downstream) {
             if(!project.isDisabled()) {
                 this.pendingDownstreamProjects.add(project.getFullName());
+                this.completedDownstreamProjects.put(project.getFullName(),new LinkedList<Result>());
             }
         }
         this.joinProjects = joinTrigger.getJoinProjectsValue();
         this.joinPublishers = joinTrigger.getJoinPublishers();
         this.resultThreshold = joinTrigger.getResultThreshold();
-        this.completedDownstreamProjects = new LinkedList<String>();
         this.consideredBuilds = new LinkedList<String>();
         this.overallResult = Result.SUCCESS;
     }
@@ -58,12 +60,14 @@ public class JoinAction implements Action {
         if (!consideredBuilds.contains(finishedBuild.toString())) {
             consideredBuilds.add(finishedBuild.toString());
             String finishedBuildProjectName = finishedBuild.getProject().getFullName();
-            if(pendingDownstreamProjects.remove(finishedBuildProjectName)) {
-                this.overallResult = this.overallResult.combine(finishedBuild.getResult());
-                completedDownstreamProjects.add(finishedBuildProjectName);
+            if (!this.completedDownstreamProjects.get(finishedBuildProjectName).contains(finishedBuild.getResult())) { 
+                List<Result> withNewResult = this.completedDownstreamProjects.get(finishedBuildProjectName);
+                withNewResult.add(finishedBuild.getResult());
+                this.completedDownstreamProjects.put(finishedBuildProjectName, withNewResult);
+                pendingDownstreamProjects.remove(finishedBuildProjectName);
                 checkPendingDownstream(upstreamBuild, listener);
             } else {
-                listener.getLogger().println("[Join] Pending does not contain " + finishedBuildProjectName);
+                listener.getLogger().println("[Join] Job List does not contain " + finishedBuildProjectName);
             }
             try {
                 upstreamBuild.save();
@@ -80,8 +84,22 @@ public class JoinAction implements Action {
 
     public synchronized void checkPendingDownstream(AbstractBuild<?,?> owner, TaskListener listener) {
         if(pendingDownstreamProjects.isEmpty()) {
+            Result finalResult = this.overallResult;
+            for(String buildName : this.completedDownstreamProjects.keySet()) {
+                List<Result> resultList = this.completedDownstreamProjects.get(buildName);
+                if (!resultList.contains(Result.SUCCESS)) {
+                    pendingDownstreamProjects.add(buildName);
+                    Result buildResult = resultList.get(0);
+                    for ( Result result : resultList ) {
+                        if (result.isBetterOrEqualTo(buildResult)) {
+                            buildResult = result;
+                        }
+                    }
+                    finalResult = finalResult.combine(buildResult);
+                }
+            }
             listener.getLogger().println("All downstream projects complete!");
-            if(this.overallResult.isWorseThan(this.resultThreshold)) {
+            if(finalResult.isWorseThan(this.resultThreshold)) {
                 listener.getLogger().println("Minimum result threshold not met for join project");
             } else {
                 final Launcher launcher = null;
