@@ -33,6 +33,7 @@ import hudson.matrix.MatrixAggregator;
 import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.Action;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.BuildListener;
 import hudson.model.Result;
@@ -41,6 +42,7 @@ import hudson.model.Cause.UpstreamCause;
 import hudson.model.CauseAction;
 import hudson.model.DependecyDeclarer;
 import hudson.model.DependencyGraph;
+import hudson.model.DependencyGraph.Dependency;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
 import hudson.model.Item;
@@ -118,10 +120,20 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
             BuildListener listener) throws InterruptedException, IOException {
         BuildTrigger buildTrigger = build.getProject().getPublishersList().get(BuildTrigger.class);
-        JoinAction joinAction = new JoinAction(this, getAllDownstream(build.getProject(), build.getEnvironment(listener)));
+        JoinAction joinAction = new JoinAction(this, getActualDownstreamProjects(build, listener));
         build.addAction(joinAction);
         joinAction.checkPendingDownstream(build, listener);
         return true;
+    }
+
+    private List<AbstractProject<?, ?>> getActualDownstreamProjects(AbstractBuild<?, ?> build, BuildListener listener) {
+        List<AbstractProject<?, ?>> downStream = new ArrayList<AbstractProject<?, ?>>();
+        List<Dependency> dependencies = Hudson.getInstance().getDependencyGraph().getDownstreamDependencies(build.getProject());
+        for (DependencyGraph.Dependency dependency : dependencies) {
+            if (dependency.shouldTriggerBuild(build, listener, new ArrayList<Action>()))
+                downStream.add(dependency.getDownstreamProject());
+        }
+        return downStream;
     }
 
     @Override
