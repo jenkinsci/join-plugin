@@ -11,7 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * @author: <a hef="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
+ * @author: <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 @Extension
 public class JoinItemListener extends ItemListener {
