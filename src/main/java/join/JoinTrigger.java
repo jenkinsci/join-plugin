@@ -28,9 +28,6 @@ import hudson.Extension;
 import hudson.Launcher;
 import hudson.Plugin;
 import hudson.Util;
-import hudson.matrix.MatrixAggregatable;
-import hudson.matrix.MatrixAggregator;
-import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.AutoCompletionCandidates;
@@ -75,14 +72,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
 
 @Extension
-public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAggregatable {
+public class JoinTrigger extends Recorder implements DependecyDeclarer {
     private static final Logger LOGGER = Logger.getLogger(JoinTrigger.class.getName());
 
 
@@ -285,16 +281,6 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             }
         }
         return ret;
-    }
-
-    @Override
-    public MatrixAggregator createAggregator(MatrixBuild build, Launcher launcher, BuildListener listener) {
-        return new MatrixAggregator(build, launcher, listener) {
-            @Override
-            public boolean endBuild() throws InterruptedException, IOException {
-                return perform(build,launcher,listener);
-            }
-        };
     }
 
     public boolean onJobRenamed(ItemGroup parent, String oldName, String newName) {
