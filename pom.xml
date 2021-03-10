@@ -11,7 +11,7 @@
   <version>1.22-SNAPSHOT</version>
   <name>Join plugin</name>
   <description>Triggering a job after a group of jobs finish</description>
-  <url>http://wiki.jenkins-ci.org/display/JENKINS/Join+Plugin</url>
+  <url>https://github.com/jenkinsci/join-plugin</url>
 
   <licenses>
     <license>
