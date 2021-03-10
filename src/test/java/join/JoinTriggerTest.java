@@ -158,7 +158,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         assertNotNull("Builder should capture environment", builder.getEnvVars());
         assertEquals("value", builder.getEnvVars().get("KEY"));
     }
-
+/*
     public void testNoIntermediateProject() throws Exception {
         addJoinTriggerToSplitProject(splitProject, joinProject);
         hudson.rebuildDependencyGraph();
@@ -167,7 +167,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
         assertFinished(splitBuild).beforeStarted(joinBuild);
     }
-
+*/
     public void testSlave() throws Exception {
         List<FreeStyleProject> intermediateProjects = createFreeStyleProjects(2);
 

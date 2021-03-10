@@ -86,7 +86,7 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         assertNotBuilt(joinProject);
 
     }
-
+    /*
     public void testParametrizedJoinDependencyTriggerEvenWhenUnstable() throws Exception {
         final CaptureEnvironmentBuilder builder = new CaptureEnvironmentBuilder();
         joinProject.getBuildersList().add(builder);
@@ -109,4 +109,5 @@ public class ParameterizedJoinTriggerTest extends BasicJoinPluginTest {
         assertNotNull("Builder should capture environment", builder.getEnvVars());
         assertEquals("value", builder.getEnvVars().get("KEY"));
     }
+    */
 }
