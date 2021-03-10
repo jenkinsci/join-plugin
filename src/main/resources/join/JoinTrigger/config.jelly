@@ -1,4 +1,20 @@
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:local="local">
+    <d:taglib uri="local">
+        <d:tag name="blockWrapperTable">
+            <j:choose>
+                <j:when test="${divBasedFormLayout}">
+                    <div>
+                        <d:invokeBody/>
+                    </div>
+                </j:when>
+                <j:otherwise>
+                    <table>
+                        <d:invokeBody/>
+                    </table>
+                </j:otherwise>
+            </j:choose>
+        </d:tag>
+    </d:taglib>
   <j:if test="${descriptor.showResultThresholdOption(targetType)}">
     <f:entry title="" help="/plugin/join/help/resultThreshold.html" field="buildTrigger.resultThreshold">
 		<select class="setting-input" name="buildTrigger.resultThreshold">
@@ -17,17 +33,17 @@
 
   <j:if test="${descriptor.getApplicableDescriptors().size() > 0}">
   <f:nested>
-   <table>
+   <local:blockWrapperTable>
     <f:optionalBlock name="join.postbuildactions" title="Run post-build actions at join"
         checked="${instance.usePostBuildActions()}" help="/plugin/join/help/postbuild.html">
         <f:entry>
-         <table>
+         <local:blockWrapperTable>
           <j:set var="descriptors" value="${null}"/>
             <f:descriptorList title="Post-Join Actions" descriptors="${descriptor.getApplicableDescriptors()}" field="joinPublishers"/>
-         </table>
+         </local:blockWrapperTable>
         </f:entry>
     </f:optionalBlock>
-   </table>
+   </local:blockWrapperTable>
   </f:nested>
   </j:if>
 </j:jelly>
