@@ -1,6 +1,7 @@
 package join.util;
 
 import hudson.FilePath;
+import hudson.Functions;
 import hudson.Launcher;
 import hudson.tasks.Maven;
 import hudson.util.StreamTaskListener;
@@ -54,15 +55,13 @@ public class MavenTestHelper {
         // otherwise extract the copy we have.
         // this happens when a test is invoked from an IDE, for example.
         LOGGER.log(Level.WARNING,"Extracting a copy of Maven bundled in the test harness into {0}. "
-                + "To avoid a performance hit, set the system property ''maven.home'' to point to a Maven2 installation.", mvnHome);
+                + "To avoid a performance hit, set the system property ''maven.home'' to point to a Maven installation.", mvnHome);
         FilePath mvn = Jenkins.get().getRootPath().createTempFile("maven", "zip");
         mvn.copyFrom(JenkinsRule.class.getClassLoader().getResource(mavenVersion + "-bin.zip"));
         mvn.unzip(new FilePath(buildDirectory));
         // TODO: switch to tar that preserves file permissions more easily
-        try {
-            GNUCLibrary.LIBC.chmod(new File(mvnHome, "bin/mvn").getPath(), 0755);
-        } catch (LinkageError x) {
-            // skip; TODO 1.630+ can use Functions.isGlibcSupported
+        if (Functions.isGlibcSupported()) {
+                GNUCLibrary.LIBC.chmod(new File(mvnHome, "bin/mvn").getPath(), 0755);
         }
 
         Maven.MavenInstallation mavenInstallation = new Maven.MavenInstallation("default",
