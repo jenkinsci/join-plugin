@@ -40,9 +40,8 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
                             try {
                                 return from.createFreeStyleProjectWithNoQuietPeriod();
                             } catch (Exception e) {
-                                fail();
+                                throw new AssertionError("Cannot create Freestyle Project without Quiet Period", e);
                             }
-                            return null;
                         }
                     },
                     MavenModuleSet.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
@@ -55,9 +54,8 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
 
                                 return mavenProject;
                             } catch (Exception e) {
-                                fail();
+                                throw new AssertionError("Cannot create Maven Project with SCM", e);
                             }
-                            return null;
                         }
                     },
                     MatrixProject.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
@@ -68,10 +66,8 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
                                 matrixProject.setQuietPeriod(0);
                                 return matrixProject;
                             } catch (Exception e) {
-                                e.printStackTrace();
-                                fail();
+                                throw new AssertionError("Cannot create Maven Project", e);
                             }
-                            return null;
                         }
                     }
             );
