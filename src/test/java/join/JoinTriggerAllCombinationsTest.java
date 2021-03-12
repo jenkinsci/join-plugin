@@ -11,13 +11,13 @@ import hudson.model.Cause;
 import hudson.model.FreeStyleProject;
 import hudson.model.Hudson;
 import jenkins.model.Jenkins;
-import join.util.MavenTestHelper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.jvnet.hudson.test.ExtractResourceSCM;
+import org.jvnet.hudson.test.ToolInstallations;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -116,7 +116,7 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
     @Test
     public void joinProjectShouldBeTriggered() throws Exception {
         assertNotNull(splitProject);
-        MavenTestHelper.configureDefaultMaven();
+        ToolInstallations.configureDefaultMaven();
         AbstractProject<?,?> splitProject = projectType2Supplier.get(splitProjClass).apply(this);
         AbstractProject<?,?> intProject = projectType2Supplier.get(intProjClass).apply(this);
         AbstractProject<?,?> joinProject = projectType2Supplier.get(joinProjClass).apply(this);
