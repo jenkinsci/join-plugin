@@ -201,7 +201,6 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
                 "SUCCESS");
         splitProject.getPublishersList().add(before);
         final WebClient webClient = createWebClient();
-        webClient.setThrowExceptionOnFailingAjax(false);
         final HtmlPage configPage = webClient.getPage(splitProject, "configure");
 
         submit(configPage.getFormByName("config"));
@@ -217,7 +216,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
         final JoinTrigger before = splitProject.getPublishersList().get(JoinTrigger.class);
         final WebClient webClient = createWebClient();
-        webClient.setThrowExceptionOnFailingAjax(false);
+       // webClient.setThrowExceptionOnFailingAjax(false);
         final HtmlPage configPage = webClient.getPage(splitProject, "configure");
 
         submit(configPage.getFormByName("config"));

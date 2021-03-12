@@ -10,12 +10,14 @@ import hudson.model.AbstractProject;
 import hudson.model.Cause;
 import hudson.model.FreeStyleProject;
 import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.jvnet.hudson.test.ExtractResourceSCM;
+import org.jvnet.hudson.test.ToolInstallations;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,38 +40,34 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
                             try {
                                 return from.createFreeStyleProjectWithNoQuietPeriod();
                             } catch (Exception e) {
-                                fail();
+                                throw new AssertionError("Cannot create Freestyle Project without Quiet Period", e);
                             }
-                            return null;
                         }
                     },
                     MavenModuleSet.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
                         @Override
                         public AbstractProject<?, ?> apply(JoinTriggerAllCombinationsTest from) {
                             try {
-                                MavenModuleSet mavenProject = from.createMavenProject();
+                                MavenModuleSet mavenProject = from.jenkins.createProject(MavenModuleSet.class, "test");
                                 mavenProject.setQuietPeriod(0);
                                 mavenProject.setScm(new ExtractResourceSCM(getClass().getResource("maven-empty-mod.zip")));
 
                                 return mavenProject;
                             } catch (Exception e) {
-                                fail();
+                                throw new AssertionError("Cannot create Maven Project with SCM", e);
                             }
-                            return null;
                         }
                     },
                     MatrixProject.class, new Function<JoinTriggerAllCombinationsTest,AbstractProject<?, ?>>() {
                         @Override
                         public AbstractProject<?, ?> apply(JoinTriggerAllCombinationsTest from) {
                             try {
-                                MatrixProject matrixProject = from.createMatrixProject();
+                                MatrixProject matrixProject = from.jenkins.createProject(MatrixProject.class, "test");
                                 matrixProject.setQuietPeriod(0);
                                 return matrixProject;
                             } catch (Exception e) {
-                                e.printStackTrace();
-                                fail();
+                                throw new AssertionError("Cannot create Maven Project", e);
                             }
-                            return null;
                         }
                     }
             );
@@ -114,13 +112,13 @@ public class JoinTriggerAllCombinationsTest extends BasicJoinPluginTest {
     @Test
     public void joinProjectShouldBeTriggered() throws Exception {
         assertNotNull(splitProject);
-        configureDefaultMaven();
+        ToolInstallations.configureDefaultMaven();
         AbstractProject<?,?> splitProject = projectType2Supplier.get(splitProjClass).apply(this);
         AbstractProject<?,?> intProject = projectType2Supplier.get(intProjClass).apply(this);
         AbstractProject<?,?> joinProject = projectType2Supplier.get(joinProjClass).apply(this);
         addProjectToSplitProject(splitProject, intProject);
         addJoinTriggerToSplitProject(splitProject, joinProject);
-        Hudson.getInstance().rebuildDependencyGraph();
+        Jenkins.get().rebuildDependencyGraph();
         final AbstractBuild<?,?> splitBuild = splitProject.scheduleBuild2(0, new Cause.UserCause()).get();
         waitUntilNoActivityUpTo(120*1000);
         AbstractBuild<?, ?> intBuild = getUniqueBuild(intProject);
