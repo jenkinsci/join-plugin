@@ -88,6 +88,8 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
 
     private String joinProjects;
 
+    // https://www.jenkins.io/blog/2018/01/13/jep-200/ Refusing to marshal join.JoinTrigger for security reasons; see https://jenkins.io/redirect/class-filter/
+    // resources/META-INF/hudson.remoting.ClassFilter with Entry join.JoinTrigger
     private DescribableList<Publisher,Descriptor<Publisher>> joinPublishers =
         new DescribableList<Publisher,Descriptor<Publisher>>(Saveable.NOOP);
 
@@ -500,7 +502,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             public void onRenamed(Item item, String oldName, String newName) {
                 // update BuildTrigger of other projects that point to this object.
                 // can't we generalize this?
-                for( Project<?,?> p : Jenkins.getInstance().getProjects() ) {
+                for( Project<?,?> p : Jenkins.get().getProjects() ) {
                     BuildTrigger t = p.getPublishersList().get(BuildTrigger.class);
                     if ((t!=null) && (t.onJobRenamed(oldName,newName))) {
                         try {

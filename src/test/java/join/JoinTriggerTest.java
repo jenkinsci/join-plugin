@@ -1,12 +1,8 @@
 package join;
 
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import hudson.model.Cause.UserCause;
-import hudson.model.Descriptor;
-import hudson.model.FreeStyleBuild;
-import hudson.model.FreeStyleProject;
-import hudson.model.Project;
-import hudson.model.Saveable;
+import hudson.model.*;
+import hudson.model.Cause.UserIdCause;
 import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
 import hudson.plugins.parameterizedtrigger.PredefinedBuildParameters;
 import hudson.plugins.parameterizedtrigger.ResultCondition;
@@ -32,7 +28,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
         hudson.rebuildDependencyGraph();
         
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         final FreeStyleBuild intermediateBuild = getUniqueBuild(intermediateProject);
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
@@ -53,7 +49,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         addJoinTriggerToSplitProject(splitProject, joinProject);
         addProjectsToSplitProject(splitProject, intermediateProjects);
         hudson.rebuildDependencyGraph();
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         final List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getUniqueBuilds(intermediateProjects);
         assertFinished(splitBuild).beforeStarted(intermediateBuilds);
@@ -75,7 +71,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
         hudson.rebuildDependencyGraph();
 
-        FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         FreeStyleBuild intermediateBuild = getUniqueBuild(intermediateProject);
         assertNotBuilt(disabledProject);
@@ -84,7 +80,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
         // Enable the project again and trigger a build
         disabledProject.enable();
-        splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getLastBuilds(intermediateProjects);
         joinBuild = getLastBuild(joinProject);
@@ -100,7 +96,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         addJoinTriggerToSplitProject(splitProject, joinProject);
         addProjectsToSplitProject(splitProject, allIntermediateProjects);
         hudson.rebuildDependencyGraph();
-        final FreeStyleBuild intermediateBuild = otherIntermediateProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild intermediateBuild = otherIntermediateProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         assertNotBuilt(joinProject);
         assertNotBuilt(splitProject);
@@ -114,7 +110,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         addJoinTriggerToSplitProject(splitProject, joinProject, otherJoinProject);
         addProjectsToSplitProject(splitProject, intermediateProjects);
         hudson.rebuildDependencyGraph();
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         final List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getUniqueBuilds(intermediateProjects);
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
@@ -128,7 +124,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         addJoinTriggerToSplitProject(splitProject, joinProject);
         addProjectsToSplitProject(splitProject, intermediateProjects);
         hudson.rebuildDependencyGraph();
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         final List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getUniqueBuilds(intermediateProjects);
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
@@ -140,6 +136,10 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
         Project<FreeStyleProject,FreeStyleBuild> intermediateProject =
                 createFreeStyleProjectWithNoQuietPeriod();
+        // https://www.jenkins.io/blog/2016/05/11/security-update/
+        ParameterDefinition paramDef = new StringParameterDefinition("KEY", "value", "https://www.jenkins.io/blog/2016/05/11/security-update/");
+        ParametersDefinitionProperty paramsDef = new ParametersDefinitionProperty(paramDef);
+        intermediateProject.addProperty(paramsDef);
         final CaptureEnvironmentBuilder builder = new CaptureEnvironmentBuilder();
         intermediateProject.getBuildersList().add(builder);
         BuildTriggerConfig buildTriggerConfig =
@@ -150,7 +150,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
                 new hudson.plugins.parameterizedtrigger.BuildTrigger(buildTriggerConfig));
 
         hudson.rebuildDependencyGraph();
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         final FreeStyleBuild intermediateBuild = getUniqueBuild(intermediateProject);
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
@@ -162,7 +162,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
     public void testNoIntermediateProject() throws Exception {
         addJoinTriggerToSplitProject(splitProject, joinProject);
         hudson.rebuildDependencyGraph();
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
         final FreeStyleBuild joinBuild = getUniqueBuild(joinProject);
         assertFinished(splitBuild).beforeStarted(joinBuild);
@@ -182,7 +182,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
         addProjectsToSplitProject(splitProject, allIntermediateProjects);
         hudson.rebuildDependencyGraph();
 
-        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserCause()).get();
+        final FreeStyleBuild splitBuild = splitProject.scheduleBuild2(0, new UserIdCause()).get();
         waitUntilNoActivity();
 
         final List<FreeStyleBuild> intermediateBuilds = JoinTriggerTest.<FreeStyleProject,FreeStyleBuild>getUniqueBuilds(intermediateProjects);
@@ -201,7 +201,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
                 "SUCCESS");
         splitProject.getPublishersList().add(before);
         final WebClient webClient = createWebClient();
-        webClient.setThrowExceptionOnFailingAjax(false);
+        // webClient.setThrowExceptionOnFailingAjax(false); // from htmlunit
         final HtmlPage configPage = webClient.getPage(splitProject, "configure");
 
         submit(configPage.getFormByName("config"));
@@ -217,7 +217,7 @@ public class JoinTriggerTest extends BasicJoinPluginTest {
 
         final JoinTrigger before = splitProject.getPublishersList().get(JoinTrigger.class);
         final WebClient webClient = createWebClient();
-        webClient.setThrowExceptionOnFailingAjax(false);
+        // webClient.setThrowExceptionOnFailingAjax(false); // from htmlunit
         final HtmlPage configPage = webClient.getPage(splitProject, "configure");
 
         submit(configPage.getFormByName("config"));
