@@ -1,10 +1,6 @@
 package join;
 
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Descriptor;
-import hudson.model.FreeStyleProject;
-import hudson.model.Saveable;
+import hudson.model.*;
 import hudson.plugins.parameterizedtrigger.AbstractBuildParameters;
 import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
 import hudson.plugins.parameterizedtrigger.ResultCondition;
@@ -14,9 +10,7 @@ import hudson.util.DescribableList;
 import org.apache.commons.lang.StringUtils;
 import org.jvnet.hudson.test.HudsonTestCase;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  *
@@ -217,7 +211,7 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
     }
 
     public FreeStyleProject createFreeStyleProjectWithNoQuietPeriod() throws Exception {
-        final FreeStyleProject freestyleProject = createFreeStyleProject();
+        final FreeStyleProject freestyleProject = createFreeStyleProject("FreeStyle_" + UUID.randomUUID());
         freestyleProject.setQuietPeriod(0);
         return freestyleProject;
     }

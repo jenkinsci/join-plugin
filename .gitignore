@@ -1,2 +1,6 @@
 /target/
 /work/
+
+# IDEA
+.idea
+*.iml
