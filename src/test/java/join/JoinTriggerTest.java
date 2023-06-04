@@ -1,6 +1,6 @@
 package join;
 
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import org.htmlunit.html.HtmlPage;
 import hudson.model.Cause.UserCause;
 import hudson.model.Descriptor;
 import hudson.model.FreeStyleBuild;
