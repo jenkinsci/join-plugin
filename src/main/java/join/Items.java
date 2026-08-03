@@ -1,7 +1,7 @@
 package join;
 
+import hudson.Util;
 import hudson.model.ItemGroup;
-import org.apache.commons.lang.StringUtils;
 
 import java.util.*;
 
@@ -43,7 +43,7 @@ public class Items {
             }
             name.push(p[i]);
         }
-        return StringUtils.join(name, '/');
+        return Util.join(name, "/");
     }
 
     /**
@@ -74,7 +74,7 @@ public class Items {
                 newValue.add(relativeName);
             }
         }
-        return StringUtils.join(newValue, ",");
+        return Util.join(newValue, ",");
     }
 
     /**
@@ -106,7 +106,7 @@ public class Items {
                 continue;
             }
         }
-        return StringUtils.join(r, '/');
+        return Util.join(Arrays.asList(r), "/");
     }
 
 }
