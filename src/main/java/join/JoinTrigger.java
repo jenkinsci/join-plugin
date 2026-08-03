@@ -64,7 +64,6 @@ import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 import join.JoinAction.JoinCause;
 import net.sf.json.JSONObject;
-import org.apache.commons.lang.StringUtils;
 import org.jenkins_ci.plugins.flexible_publish.ConditionalPublisher;
 import org.jenkins_ci.plugins.flexible_publish.FlexiblePublisher;
 import org.kohsuke.stapler.AncestorInPath;
@@ -350,7 +349,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             List<String> verified = new ArrayList<String>();
             for (String token : tokens) {
                 String projectName = token.trim();
-                if (StringUtils.isNotEmpty(projectName)) {
+                if (projectName != null && projectName.length() > 0) {
                     // can't really test the validity of the value since we don't know the current context ItemParent
                     // Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
                     verified.add(projectName);
@@ -401,7 +400,7 @@ public class JoinTrigger extends Recorder implements DependecyDeclarer, MatrixAg
             String[] tokens = Util.fixNull(value).split(",");
             for (String token : tokens) {
                 String projectName = token.trim();
-                if (StringUtils.isNotEmpty(projectName)) {
+                if (projectName != null && projectName.length() > 0) {
                     Item item = Jenkins.getInstance().getItem(projectName,context,Item.class);
                     if(item==null) {
                         return FormValidation.error("No such project: "+projectName);

@@ -10,8 +10,8 @@ import hudson.plugins.parameterizedtrigger.BuildTriggerConfig;
 import hudson.plugins.parameterizedtrigger.ResultCondition;
 import hudson.tasks.BuildTrigger;
 import hudson.tasks.Publisher;
+import hudson.Util;
 import hudson.util.DescribableList;
-import org.apache.commons.lang.StringUtils;
 import org.jvnet.hudson.test.HudsonTestCase;
 
 import java.util.ArrayList;
@@ -119,7 +119,7 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
             projects.add(project.getName());
         }
         splitProject.getPublishersList().add(new JoinTrigger(new DescribableList<Publisher, Descriptor<Publisher>>(
-                Saveable.NOOP), StringUtils.join(projects,","), "SUCCESS"));
+                Saveable.NOOP), Util.join(projects, ","), "SUCCESS"));
     }
 
     public static void addParameterizedJoinTriggerToProject(AbstractProject<?,?> splitProject, AbstractProject<?,?> joinProject, AbstractBuildParameters... params) throws Exception {
@@ -145,7 +145,7 @@ public abstract class BasicJoinPluginTest extends HudsonTestCase {
         for (AbstractProject<?, ?> project : projectsToAdd) {
             projects.add(project.getName());
         }
-        addProjectToSplitProject(splitProject, StringUtils.join(projects, ","));
+        addProjectToSplitProject(splitProject, Util.join(projects, ","));
     }
 
     public static BuildTimeConstraint assertFinished(AbstractBuild<?,?> build) {
